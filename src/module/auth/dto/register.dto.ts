@@ -31,6 +31,13 @@ export class RegisterDto {
   username: string;
 
   @ApiProperty({
+    example: 'token',
+    description: 'fcm token',
+  })
+  @IsNotEmpty({ message: 'fcm token  is required!' })
+  fcmToken: string;
+  
+  @ApiProperty({
     example: '1234',
     description: 'User password (min 6 characters)',
   })

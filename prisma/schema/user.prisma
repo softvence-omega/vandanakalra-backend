@@ -18,6 +18,7 @@ model User {
     firstname      String
     lastname       String
     username       String       @unique
+    fcmToken       String?
     image          String?
     enrolledEvents Enrolled[]
     point          Int          @default(0)

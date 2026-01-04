@@ -51,6 +51,7 @@ export class AuthService {
         lastname: dto.lastName,
         username: dto.username,
         password: hashedPassword,
+        fcmToken:dto.fcmToken,
       },
     });
 
@@ -71,7 +72,7 @@ export class AuthService {
       where: { username: dto.username },
     });
 
-    if (!user || !dto.password) {
+    if (!user || !dto.password || !dto.fcmToken) {
       throw new ForbiddenException('Invalid credentials');
     }
 
@@ -87,6 +88,11 @@ export class AuthService {
     if (!isMatch) {
       throw new ForbiddenException('Invalid credentials');
     }
+
+    const updateToken = await this.prisma.user.update({
+      where: { username: dto.username },
+      data: { fcmToken: dto.fcmToken },
+    });
 
     const tokens = await getTokens(
       this.jwtService,
@@ -116,13 +122,19 @@ export class AuthService {
     const updateUser = await this.prisma.user.update({
       where: { id: userId },
       data: { isActive: true },
+      select: {
+        // Specify the fields to return
+        id: true,
+        isActive: true,
+        fcmToken: true, // Include the fcmToken field in the result
+      },
     });
 
     // const user = await this.userService.findById(userId);
     const response = await this.notification.sendPushNotification(
-      'user.    at C:\Users\mmish\OneDrive\Documents\softvence projects\vandanakalra-backend\node_modules\firebase-admin\lib\messaging\messaging-api-request-internal.js:74:75',
+      updateUser.fcmToken as string,
       'Registration Approved!',
-      'Your account has been approved. You can now log in.',
+      'Your account has been approved By admin . You can now log in .',
       { status: 'approved' },
     );
 
