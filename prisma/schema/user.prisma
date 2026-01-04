@@ -1,0 +1,67 @@
+enum userRole {
+    USER
+    ADMIN
+}
+
+enum Status {
+    JOIN
+    ATTENDED
+}
+
+enum AttendanceStatus {
+    PRESENT
+    APPCENT
+}
+
+model User {
+    id             String       @id @default(uuid())
+    firstname      String
+    lastname       String
+    username       String       @unique
+    enrolledEvents Enrolled[]
+    point          Int          @default(0)
+    role           userRole     @default(USER)
+    password       String
+    isActive       Boolean      @default(false)
+    isDeleted      Boolean      @default(false)
+    createdAt      DateTime     @default(now())
+    updatedAt      DateTime     @updatedAt
+    events         Event[]
+    attendences    Attendence[]
+}
+
+model Event {
+    id          String     @id @default(uuid())
+    title       String
+    description String?
+    pointValue  Int
+    date        DateTime
+    time        String
+    maxStudent  Int
+    createdAt   DateTime   @default(now())
+    enrolled    Enrolled[]
+    eventType   String     @default("INSIDE") // OUTSIDE
+
+    user   User?   @relation(fields: [userId], references: [id])
+    userId String?
+}
+
+model Enrolled {
+    id         String  @id @default(uuid())
+    userId     String
+    eventId    String
+    claimPoint Boolean @default(false)
+    status     Status  @default(JOIN)
+    user       User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+    event      Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
+    createdAt      DateTime     @default(now())
+    @@unique([userId, eventId])
+}
+
+model Attendence {
+    id        String           @id @default(uuid())
+    userId    String
+    attendence   AttendanceStatus @default(PRESENT)
+    user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+    createdAt DateTime         @default(now())
+}
