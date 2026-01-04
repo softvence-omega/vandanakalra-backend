@@ -1,4 +1,9 @@
-import { HttpStatus, Injectable, OnModuleInit, HttpException } from '@nestjs/common';
+import {
+  HttpStatus,
+  Injectable,
+  OnModuleInit,
+  HttpException,
+} from '@nestjs/common';
 import * as admin from 'firebase-admin';
 import * as fs from 'fs';
 import * as path from 'path';
@@ -7,17 +12,37 @@ import * as path from 'path';
 export class NotificationService implements OnModuleInit {
   onModuleInit() {
     if (!admin.apps.length) {
-      const serviceAccountPath = path.join(
-        __dirname,
-        '..',
-        '..',
-        '..',
-        'firebase-service-account.json',
-      );
+      let serviceAccount;
 
-      const serviceAccount = JSON.parse(
-        fs.readFileSync(serviceAccountPath, 'utf8'),
-      );
+      // Try to load from environment variable first (production)
+      const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
+      if (serviceAccountEnv) {
+        try {
+          serviceAccount = JSON.parse(serviceAccountEnv);
+        } catch (e) {
+          throw new Error(
+            'Invalid FIREBASE_SERVICE_ACCOUNT environment variable. Must be valid JSON.',
+          );
+        }
+      } else {
+        // Fallback to local file (development only)
+        const fs = require('fs');
+        const path = require('path');
+        const serviceAccountPath = path.join(
+          process.cwd(),
+          'firebase-service-account.json',
+        );
+
+        if (!fs.existsSync(serviceAccountPath)) {
+          throw new Error(
+            'Firebase service account not found. Either set FIREBASE_SERVICE_ACCOUNT env var or provide firebase-service-account.json in the project root.',
+          );
+        }
+
+        serviceAccount = JSON.parse(
+          fs.readFileSync(serviceAccountPath, 'utf8'),
+        );
+      }
 
       admin.initializeApp({
         credential: admin.credential.cert(serviceAccount),
@@ -31,7 +56,7 @@ export class NotificationService implements OnModuleInit {
     body: string,
     data?: Record<string, string>,
   ): Promise<string> {
-    if (!fcmToken ) {
+    if (!fcmToken) {
       throw new HttpException(
         'Invalid FCM token: Token is missing or too short',
         HttpStatus.BAD_REQUEST,
