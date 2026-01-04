@@ -38,6 +38,7 @@ import { NotificationService } from '../notification/notification.service';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { CloudinaryService } from 'src/common/services/cloudinary.service';
+import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgetPasswordDto';
 
 @Controller('auth')
 export class AuthController {
@@ -207,7 +208,11 @@ export class AuthController {
     }
 
     // Optional: update profile even if no image
-    const updatedUser = await this.authService.updateProfile(userId, updateDto , imageUrl);
+    const updatedUser = await this.authService.updateProfile(
+      userId,
+      updateDto,
+      imageUrl,
+    );
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
@@ -220,9 +225,13 @@ export class AuthController {
   @Post('record-attendence')
   @Roles(userRole.USER, userRole.ADMIN)
   @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
-  async createAttendance(@Res() res: Response, @Req() req: Request) {
+  async createAttendance(
+    @Body() dto: CreateAttendanceDto,
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
     const userId = req.user!.id;
-    const result = await this.authService.createAttendance(userId);
+    const result = await this.authService.createAttendance(userId, dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
@@ -249,6 +258,30 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Attendance records retrieved successfully',
+      data: result,
+    });
+  }
+  @Public()
+  @Post('forgot-password')
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Res() res: Response)  {
+    const result = await this.authService.forgotPassword(dto.username, dto.fcmToken);
+
+     return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Reset Code sent successfully',
+      data: result,
+    });
+  }
+  @Public()
+  @Post('forget-reset-password')
+  async resetPassword(@Body() dto: ResetPasswordDto , @Res() res: Response) {
+    const result = await this.authService.resetPassword(dto.token, dto.newPassword);
+
+     return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Reset Password successfull',
       data: result,
     });
   }

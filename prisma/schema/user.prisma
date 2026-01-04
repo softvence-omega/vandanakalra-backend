@@ -14,12 +14,14 @@ enum AttendanceStatus {
 }
 
 model User {
-    id             String       @id @default(uuid())
-    firstname      String
-    lastname       String
-    username       String       @unique
-    fcmToken       String?
-    image          String?
+    id                   String    @id @default(uuid())
+    firstname            String
+    lastname             String
+    username             String    @unique
+    fcmToken             String?
+    image                String?
+    resetPasswordToken   String? // 4-digit string like "5839"
+    resetPasswordExpires DateTime?
     enrolledEvents Enrolled[]
     point          Int          @default(0)
     role           userRole     @default(USER)

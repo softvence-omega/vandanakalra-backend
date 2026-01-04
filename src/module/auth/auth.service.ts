@@ -21,6 +21,7 @@ import {
   UpdateUserProfileDto,
 } from './dto/update-account.dto';
 import { NotificationService } from '../notification/notification.service';
+import { CreateAttendanceDto } from './dto/attendence.dto';
 
 @Injectable()
 export class AuthService {
@@ -51,7 +52,7 @@ export class AuthService {
         lastname: dto.lastName,
         username: dto.username,
         password: hashedPassword,
-        fcmToken:dto.fcmToken,
+        fcmToken: dto.fcmToken,
       },
     });
 
@@ -224,7 +225,7 @@ export class AuthService {
     return safeUser;
   }
 
-  async createAttendance(userId: string) {
+  async createAttendance(userId: string, dto: CreateAttendanceDto) {
     // 1. Validate user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -319,5 +320,67 @@ export class AuthService {
     });
 
     return attendances;
+  }
+
+  async forgotPassword(username: string, fcmToken: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { username },
+    });
+
+    // Still avoid user enumeration → silently succeed if not found
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Generate 4-digit numeric token
+    const resetToken = Math.floor(1000 + Math.random() * 9000).toString(); // e.g. "4829"
+    const resetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
+
+    const userUpdate=await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        resetPasswordToken: resetToken,
+        resetPasswordExpires: resetExpires,
+      },
+    });
+
+    // Send FCM with 4-digit code (user can type it, or app deep-links it)
+    // const response = await this.notification.sendPushNotification(
+    //   fcmToken,
+    //   'Password Reset Code',
+    //   `Your code: ${resetToken}. Valid for 10 minutes`,
+    //   { status: 'success' },
+    // );
+
+    return userUpdate
+  }
+
+  async resetPassword(token: string, newPassword: string){
+    const user = await this.prisma.user.findFirst({
+      where: {
+        resetPasswordToken: token,
+        resetPasswordExpires: {
+          gte: new Date(), // greater than or equal to now → not expired
+        },
+      },
+    });
+
+    if (!user) {
+      throw new BadRequestException('Invalid or expired reset token');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    const updateUser = await this.prisma.user.update({
+      where: { id: user.id },
+      data: {
+        password: hashedPassword,
+        resetPasswordToken: null,
+        resetPasswordExpires: null,
+      },
+    });
+
+        return updateUser
+
   }
 }
