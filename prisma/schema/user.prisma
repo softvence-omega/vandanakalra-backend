@@ -14,24 +14,25 @@ enum AttendanceStatus {
 }
 
 model User {
-    id                   String    @id @default(uuid())
+    id                   String         @id @default(uuid())
     firstname            String
     lastname             String
-    username             String    @unique
+    username             String         @unique
     fcmToken             String?
     image                String?
     resetPasswordToken   String? // 4-digit string like "5839"
     resetPasswordExpires DateTime?
-    enrolledEvents Enrolled[]
-    point          Int          @default(0)
-    role           userRole     @default(USER)
-    password       String
-    isActive       Boolean      @default(false)
-    isDeleted      Boolean      @default(false)
-    createdAt      DateTime     @default(now())
-    updatedAt      DateTime     @updatedAt
-    events         Event[]
-    attendences    Attendence[]
+    enrolledEvents       Enrolled[]
+    point                Int            @default(0)
+    role                 userRole       @default(USER)
+    password             String
+    isActive             Boolean        @default(false)
+    isDeleted            Boolean        @default(false)
+    createdAt            DateTime       @default(now())
+    updatedAt            DateTime       @updatedAt
+    events               Event[]
+    attendences          Attendence[]
+    outsideEvents        OutsideEvent[]
 }
 
 model Event {
@@ -48,6 +49,18 @@ model Event {
 
     user   User?   @relation(fields: [userId], references: [id])
     userId String?
+}
+
+model OutsideEvent {
+    id          String   @id @default(uuid())
+    title       String
+    description String?
+    pointValue  Int
+    date         DateTime?
+    createdAt   DateTime @default(now())
+    approved    Boolean  @default(false)
+    user        User?    @relation(fields: [userId], references: [id])
+    userId      String?
 }
 
 model Enrolled {

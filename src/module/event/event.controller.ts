@@ -9,6 +9,8 @@ import {
   Param,
   Req,
   Res,
+  Patch,
+  NotFoundException,
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto, UpdateEventDto } from './dto';
@@ -18,6 +20,7 @@ import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { userRole } from '@prisma/client';
+import { CreateOutsideEventDto } from './dto/create-outside.dto';
 
 @Controller('event')
 export class EventController {
@@ -50,6 +53,134 @@ export class EventController {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Event created successfully',
+      data: result,
+    });
+  }
+
+  @Post('create-outside-event')
+  @Roles(userRole.ADMIN , userRole.USER)
+  @ApiOperation({
+    summary: 'Create a new outside event',
+    description: 'Creates a new outside event (requires admin role)',
+  })
+  @ApiBody({
+    description: 'Data for the outside event',
+    type: CreateOutsideEventDto,
+  })
+  @ApiResponse({
+    status: 201,
+    description: 'Outside event created successfully.',
+  })
+  async createOutsideEvent(
+    @Body() dto: CreateOutsideEventDto,
+    @Res() res: Response,
+  ) {
+    // You can pass userId from request if needed (e.g., for audit)
+    // For now, keeping it optional as per your service signature
+    const result = await this.eventService.createOutsideEvent(dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Outside event created successfully',
+      data: result,
+    });
+  }
+
+  @Get('unapproved-outside-event')
+  @Roles(userRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get all unapproved outside events',
+    description: 'Returns a list of outside events pending approval',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved unapproved events',
+  })
+  async getUnapprovedOutsideEvents(@Res() res: Response) {
+    const events = await this.eventService.getUnapprovedOutsideEvents();
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Unapproved outside events retrieved successfully',
+      data: events,
+    });
+  }
+
+  @Patch('approve-outside-event/:eventId')
+  @Roles(userRole.ADMIN)
+  @ApiOperation({
+    summary: 'Approve an outside event and award points if user attended',
+  })
+  @ApiParam({ name: 'id', description: 'ID of the outside event' })
+  @ApiResponse({
+    status: 200,
+    description: 'Event approved and points awarded',
+  })
+  @ApiResponse({
+    status: 400,
+    description: 'User not present or already approved',
+  })
+  async approveOutsideEvent(
+    @Param('eventId') eventId: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.eventService.approveOutsideEvent(eventId);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Outside event approved and points added to user',
+      data: result,
+    });
+  }
+
+  @Get('userApproved-events')
+  @Roles(userRole.ADMIN, userRole.ADMIN)
+  @ApiOperation({
+    summary: 'Get approved outside events for a specific user with summary',
+  })
+  @ApiParam({ name: 'userId', description: 'ID of the user' })
+  @ApiResponse({ status: 200, description: 'Successfully retrieved data' })
+  async getUserApprovedOutsideEvents(
+    @Res() res: Response,
+    @Req() req: Request,
+  ) {
+    // Optional: Validate user exists
+    const userId = req.user!.id;
+
+    const result =
+      await this.eventService.getUserApprovedOutsideEventsWithSummary(userId);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Approved outside events retrieved successfully',
+      data: result,
+    });
+  }
+
+  @Delete('delete-outside-event/:id')
+  @Roles(userRole.ADMIN) // or extend logic to allow event owner
+  @ApiOperation({
+    summary: 'Delete an unapproved outside event',
+    description: 'O nly unapproved events can be deleted',
+  })
+  @ApiParam({ name: 'id', description: 'ID of the outside event' })
+  @ApiResponse({ status: 200, description: 'Event deleted successfully' })
+  @ApiResponse({ status: 400, description: 'Event is approved or invalid' })
+  @ApiResponse({ status: 404, description: 'Event not found' })
+  async deleteUnapprovedOutsideEvent(
+    @Param('id') eventId: string,
+    @Res() res: Response,
+  ) {
+    const result =
+      await this.eventService.deleteUnapprovedOutsideEvent(eventId);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
       data: result,
     });
   }

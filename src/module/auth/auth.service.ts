@@ -73,9 +73,14 @@ export class AuthService {
       where: { username: dto.username },
     });
 
-    if (!user || !dto.password || !dto.fcmToken) {
+    if (!user || !dto.password || !dto.fcmToken || !dto.role) {
       throw new ForbiddenException('Invalid credentials');
     }
+
+    if (user.role !== dto.role) {
+      throw new ForbiddenException(`${dto.role} role is not allowed here `);
+    }
+
 
     if (!user.isActive) {
       throw new ForbiddenException('Your account is not Active yet!');
@@ -89,7 +94,7 @@ export class AuthService {
     if (!isMatch) {
       throw new ForbiddenException('Invalid credentials');
     }
-
+     
     const updateToken = await this.prisma.user.update({
       where: { username: dto.username },
       data: { fcmToken: dto.fcmToken },
@@ -132,12 +137,12 @@ export class AuthService {
     });
 
     // const user = await this.userService.findById(userId);
-    const response = await this.notification.sendPushNotification(
-      updateUser.fcmToken as string,
-      'Registration Approved!',
-      'Your account has been approved By admin . You can now log in .',
-      { status: 'approved' },
-    );
+    // const response = await this.notification.sendPushNotification(
+    //   updateUser.fcmToken as string,
+    //   'Registration Approved!',
+    //   'Your account has been approved By admin . You can now log in .',
+    //   { status: 'approved' },
+    // );
 
     return { updateUser };
   }

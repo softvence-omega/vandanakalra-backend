@@ -15,7 +15,14 @@ export class LoginDto {
   })
   @IsNotEmpty({ message: 'fcm token  is required!' })
   fcmToken: string;
-  
+
+  @ApiProperty({
+    example: 'role',
+    description: 'role',
+  })
+  @IsNotEmpty({ message: 'role  is required!' })
+  role: string;
+
   @ApiProperty({
     example: '1234',
     description: 'User password (min 4 characters)',
