@@ -1,8 +1,13 @@
 import { ApiProperty } from '@nestjs/swagger';
-import { IsBoolean, IsOptional, IsString, isString, MinLength } from 'class-validator';
+import {
+  IsBoolean,
+  IsOptional,
+  IsString,
+  isString,
+  MinLength,
+} from 'class-validator';
 
 export class AccountActiveDto {
-
   @ApiProperty({
     description: 'Whether the account is active',
     type: String,
@@ -27,11 +32,7 @@ export class ChangePasswordDto {
   @IsString({ message: 'New password must be a string.' })
   @MinLength(4, { message: 'New password must be at least 4 characters long.' })
   newPassword: string;
-
 }
-
-
-
 
 export class UpdateUserProfileDto {
   @ApiProperty({
@@ -54,4 +55,12 @@ export class UpdateUserProfileDto {
   @MinLength(1)
   lastname?: string;
 
+  @ApiProperty({
+    type: 'string',
+    format: 'binary',
+    description: 'Profile image file (optional)',
+    required: false,
+  })
+  @IsOptional()
+  image?: any;
 }

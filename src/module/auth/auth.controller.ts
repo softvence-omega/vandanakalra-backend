@@ -9,13 +9,21 @@ import {
   Query,
   Req,
   Res,
+  UploadedFile,
+  UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { LoginDto } from './dto/login.dto';
 import sendResponse from '../utils/sendResponse';
 import { Public } from 'src/common/decorators/public.decorators';
 import type { Request, Response } from 'express';
-import { ApiBody, ApiOperation, ApiQuery, ApiResponse } from '@nestjs/swagger';
+import {
+  ApiBody,
+  ApiConsumes,
+  ApiOperation,
+  ApiQuery,
+  ApiResponse,
+} from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import {
@@ -27,10 +35,16 @@ import { CreateAttendanceDto } from './dto/attendence.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { userRole } from '@prisma/client';
 import { NotificationService } from '../notification/notification.service';
+import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
+import multer from 'multer';
+import { CloudinaryService } from 'src/common/services/cloudinary.service';
 
 @Controller('auth')
 export class AuthController {
-  constructor(private authService: AuthService ,     private notification: NotificationService) {}
+  constructor(
+    private authService: AuthService,
+    private readonly cloudinaryService: CloudinaryService,
+  ) {}
 
   // refresh token
   @Public()
@@ -161,30 +175,52 @@ export class AuthController {
 
   @Patch('update-profile')
   @Roles(userRole.ADMIN, userRole.USER)
+  @UseInterceptors(
+    FileInterceptor('image', { storage: multer.memoryStorage() }),
+  )
+  @ApiConsumes('multipart/form-data') // 👈 tells Swagger to use multipart
+  @ApiBody({
+    description: 'Update user profile with optional image upload',
+    type: UpdateUserProfileDto, // 👈 use the new DTO here
+  })
+  @ApiOperation({ summary: 'Update user profile (with optional image)' })
+  @ApiResponse({
+    status: HttpStatus.OK,
+    description: 'Profile updated successfully',
+  })
   async updateProfile(
     @Req() req: any,
     @Body() updateDto: UpdateUserProfileDto,
+    @UploadedFile() file: Express.Multer.File,
     @Res() res: Response,
   ) {
-    const userId = req.user?.id; // adjust based on your auth payload structure
+    const userId = req.user?.id;
+    let imageUrl: string | null = null;
 
-    const updatedUser = await this.authService.updateProfile(userId, updateDto);
+    if (file) {
+      const result = await this.cloudinaryService.uploadImage(
+        file,
+        'profile-images',
+      );
+      imageUrl = result.secure_url; // This is valid now because imageUrl is typed as string | null
+      // You probably want to save this URL to the user record
+    }
+
+    // Optional: update profile even if no image
+    const updatedUser = await this.authService.updateProfile(userId, updateDto , imageUrl);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Profile updated successfully',
-      data: updatedUser,
+      data: { ...updatedUser },
     });
   }
 
   @Post('record-attendence')
-  @Roles(userRole.USER , userRole.ADMIN)
+  @Roles(userRole.USER, userRole.ADMIN)
   @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
-  async createAttendance(
-    @Res() res: Response,
-    @Req() req: Request,
-  ) {
+  async createAttendance(@Res() res: Response, @Req() req: Request) {
     const userId = req.user!.id;
     const result = await this.authService.createAttendance(userId);
 
@@ -197,7 +233,7 @@ export class AuthController {
   }
 
   @Get('get-attendence-ByDate')
-  @Roles(userRole.ADMIN )
+  @Roles(userRole.ADMIN)
   @ApiQuery({
     name: 'date',
     type: String,
@@ -216,7 +252,4 @@ export class AuthController {
       data: result,
     });
   }
-
-
-  
 }

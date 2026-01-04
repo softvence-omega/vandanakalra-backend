@@ -10,6 +10,8 @@ import { SeederService } from './seeder/seeder.service';
 import { EventModule } from './module/event/event.module';
 import { EnrollementModule } from './module/enrollement/enrollement.module';
 import { NotificationModule } from './module/notification/notification.module';
+import { CloudinaryConfig } from './config/cloudinary.config';
+import { CloudinaryModule } from './module/cloudinary/cloudinary.module';
 
 @Module({
   imports: [ MailerModule.forRootAsync({
@@ -29,8 +31,9 @@ import { NotificationModule } from './module/notification/notification.module';
           from: config.get<string>('SMTP_FROM') || config.get<string>('SMTP_USER'),
         },
       }),
-    }),AuthModule, PrismaModule, MailModule, EventModule, EnrollementModule, NotificationModule,],
+    }),AuthModule, PrismaModule, MailModule, EventModule, EnrollementModule, NotificationModule, CloudinaryModule,],
   controllers: [AppController, ],
-  providers: [AppService , SeederService, ],
+  providers: [AppService , SeederService ],
+  exports:[]
 })
 export class AppModule {}

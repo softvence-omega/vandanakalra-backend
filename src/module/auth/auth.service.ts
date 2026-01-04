@@ -183,7 +183,7 @@ export class AuthService {
   }
 
   //update profile
-  async updateProfile(userId: string, dto: UpdateUserProfileDto) {
+  async updateProfile(userId: string, dto: UpdateUserProfileDto , imageUrl:string | null) {
     // Optional: Validate that user exists
     const existingUser = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -199,6 +199,7 @@ export class AuthService {
       data: {
         firstname: dto.firstname,
         lastname: dto.lastname,
+        image:imageUrl,
         updatedAt: new Date(), // Optional: Prisma @updatedAt handles this automatically
       },
     });
