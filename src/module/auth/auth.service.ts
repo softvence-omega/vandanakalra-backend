@@ -117,15 +117,14 @@ export class AuthService {
       where: { id: userId },
       data: { isActive: true },
     });
-    
+
     // const user = await this.userService.findById(userId);
     const response = await this.notification.sendPushNotification(
       'user.    at C:\Users\mmish\OneDrive\Documents\softvence projects\vandanakalra-backend\node_modules\firebase-admin\lib\messaging\messaging-api-request-internal.js:74:75',
       'Registration Approved!',
       'Your account has been approved. You can now log in.',
       { status: 'approved' },
-    )
-
+    );
 
     return { updateUser };
   }
@@ -183,7 +182,11 @@ export class AuthService {
   }
 
   //update profile
-  async updateProfile(userId: string, dto: UpdateUserProfileDto , imageUrl:string | null) {
+  async updateProfile(
+    userId: string,
+    dto: UpdateUserProfileDto,
+    imageUrl: string | null,
+  ) {
     // Optional: Validate that user exists
     const existingUser = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -197,10 +200,10 @@ export class AuthService {
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
       data: {
-        firstname: dto.firstname,
-        lastname: dto.lastname,
-        image:imageUrl,
-        updatedAt: new Date(), // Optional: Prisma @updatedAt handles this automatically
+        ...(dto.firstname !== undefined && { firstname: dto.firstname }),
+        ...(dto.lastname !== undefined && { lastname: dto.lastname }),
+        ...(imageUrl !== null && { image: imageUrl }),
+        updatedAt: new Date(), // Optional: Prisma @updatedAt handles this automaticall
       },
     });
 
