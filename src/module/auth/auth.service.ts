@@ -388,4 +388,17 @@ export class AuthService {
         return updateUser
 
   }
+
+  async isUserActive(fcmToken: string) {
+  const user = await this.prisma.user.findFirst({
+    where: { fcmToken: fcmToken },
+    select: { isActive: true, isDeleted: true }, // only fetch needed fields
+  });
+
+  if (!user || user.isDeleted) {
+    throw new NotFoundException('User not found');
+  }
+
+  return { isActive: user.isActive };
+}
 }

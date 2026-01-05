@@ -3,6 +3,7 @@ import {
   Controller,
   Get,
   HttpStatus,
+  Param,
   Patch,
   Post,
   Put,
@@ -21,6 +22,7 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
+  ApiParam,
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
@@ -48,7 +50,6 @@ export class AuthController {
   ) {}
 
   // refresh token
-  @Public()
   @Post('refresh-token')
   @ApiOperation({
     summary: 'Refresh JWT tokens',
@@ -175,7 +176,6 @@ export class AuthController {
   }
 
   @Patch('update-profile')
-  @Roles(userRole.ADMIN, userRole.USER)
   @UseInterceptors(
     FileInterceptor('image', { storage: multer.memoryStorage() }),
   )
@@ -223,7 +223,6 @@ export class AuthController {
   }
 
   @Post('record-attendence')
-  @Roles(userRole.USER, userRole.ADMIN)
   @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
   async createAttendance(
     @Body() dto: CreateAttendanceDto,
@@ -273,6 +272,7 @@ export class AuthController {
       data: result,
     });
   }
+
   @Public()
   @Post('forget-reset-password')
   async resetPassword(@Body() dto: ResetPasswordDto , @Res() res: Response) {
@@ -283,6 +283,39 @@ export class AuthController {
       success: true,
       message: 'Reset Password successfull',
       data: result,
+    });
+  }
+
+  @Public()
+  @Get('active-status/:fcmToken')
+  @ApiOperation({
+    summary: 'Check if a user is active',
+    description: 'Returns whether the user account is active (isActive = true)',
+  })
+  @ApiResponse({
+    status: 200,
+    description: 'Successfully retrieved active status',
+    schema: {
+      example: {
+        statusCode: 200,
+        success: true,
+        message: 'User active status retrieved',
+        data: { isActive: true },
+      },
+    },
+  })
+  @ApiResponse({ status: 404, description: 'User not found' })
+  async checkUserActiveStatus(
+    @Param('fcmToken') fcmToken: string,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.isUserActive(fcmToken);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'User active status retrieved',
+       data:result,
     });
   }
 }
