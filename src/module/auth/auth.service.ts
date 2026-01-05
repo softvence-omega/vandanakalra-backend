@@ -137,12 +137,12 @@ export class AuthService {
     });
 
     // const user = await this.userService.findById(userId);
-    // const response = await this.notification.sendPushNotification(
-    //   updateUser.fcmToken as string,
-    //   'Registration Approved!',
-    //   'Your account has been approved By admin . You can now log in .',
-    //   { status: 'approved' },
-    // );
+    const response = await this.notification.sendPushNotification(
+      updateUser.fcmToken as string,
+      'Registration Approved!',
+      'Your account has been approved By admin . You can now log in .',
+      { status: 'approved' },
+    );
 
     return { updateUser };
   }
@@ -350,14 +350,14 @@ export class AuthService {
     });
 
     // Send FCM with 4-digit code (user can type it, or app deep-links it)
-    // const response = await this.notification.sendPushNotification(
-    //   fcmToken,
-    //   'Password Reset Code',
-    //   `Your code: ${resetToken}. Valid for 10 minutes`,
-    //   { status: 'success' },
-    // );
+    const response = await this.notification.sendPushNotification(
+      fcmToken,
+      'Password Reset Code',
+      `Your code: ${resetToken}. Valid for 10 minutes`,
+      { status: 'success' },
+    );
 
-    return userUpdate
+    return resetToken
   }
 
   async resetPassword(token: string, newPassword: string){

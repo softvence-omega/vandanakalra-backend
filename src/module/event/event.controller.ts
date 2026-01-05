@@ -58,7 +58,6 @@ export class EventController {
   }
 
   @Post('create-outside-event')
-  @Roles(userRole.ADMIN , userRole.USER)
   @ApiOperation({
     summary: 'Create a new outside event',
     description: 'Creates a new outside event (requires admin role)',
@@ -74,10 +73,12 @@ export class EventController {
   async createOutsideEvent(
     @Body() dto: CreateOutsideEventDto,
     @Res() res: Response,
+    @Req() req: Request,
   ) {
     // You can pass userId from request if needed (e.g., for audit)
     // For now, keeping it optional as per your service signature
-    const result = await this.eventService.createOutsideEvent(dto);
+    const userId = req.user!.id;
+    const result = await this.eventService.createOutsideEvent(dto, userId);
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
@@ -113,7 +114,6 @@ export class EventController {
   @ApiOperation({
     summary: 'Approve an outside event and award points if user attended',
   })
-  @ApiParam({ name: 'id', description: 'ID of the outside event' })
   async approveOutsideEvent(
     @Param('eventId') eventId: string,
     @Res() res: Response,
@@ -128,12 +128,11 @@ export class EventController {
     });
   }
 
-  @Get('userApproved-events')
+  @Get('get-outside-userApproved-events')
   @Roles(userRole.ADMIN, userRole.ADMIN)
   @ApiOperation({
     summary: 'Get approved outside events for a specific user with summary',
   })
-  @ApiParam({ name: 'userId', description: 'ID of the user' })
   @ApiResponse({ status: 200, description: 'Successfully retrieved data' })
   async getUserApprovedOutsideEvents(
     @Res() res: Response,

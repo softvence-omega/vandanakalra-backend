@@ -12,10 +12,11 @@ import { EnrollementModule } from './module/enrollement/enrollement.module';
 import { NotificationModule } from './module/notification/notification.module';
 import { CloudinaryConfig } from './config/cloudinary.config';
 import { CloudinaryModule } from './module/cloudinary/cloudinary.module';
+import { ScheduleModule } from '@nestjs/schedule';
 
 @Module({
   imports: [ MailerModule.forRootAsync({
-      imports: [ConfigModule],
+      imports: [ConfigModule ,ScheduleModule.forRoot(),],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         transport: {

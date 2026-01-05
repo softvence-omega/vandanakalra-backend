@@ -8,10 +8,14 @@ import { PrismaService } from 'src/module/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
 import { UpdateEventDto } from './dto/update-event.dto';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
+import { NotificationService } from '../notification/notification.service';
 
 @Injectable()
 export class EventService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private notification: NotificationService,
+  ) {}
 
   async createEvent(createEventDto: CreateEventDto, userId?: string) {
     // Check if user exists
@@ -29,23 +33,56 @@ export class EventService {
         userId: userId,
       },
     });
+    const users = await this.prisma.user.findMany({
+      where: {
+        isNewEventNotify: true,
+        isActive: true,
+        isDeleted: false,
+        fcmToken: { not: null },
+      },
+      select: { fcmToken: true },
+    });
+
+    const fcmTokens = users.map((u) => u.fcmToken!).filter(Boolean);
+
+    if (fcmTokens.length > 0) {
+      await this.notification.sendBulkPushNotification(
+        fcmTokens,
+        '🎉 New Event Created!',
+        `A new event "${event.title}" is now available!`,
+        { eventType: 'new_event', eventId: event.id },
+      );
+    }
   }
 
   async createOutsideEvent(dto: CreateOutsideEventDto, userId?: string) {
-    // Optional: Validate that user exists if userId is provided
-    const user = await this.prisma.user.findUnique({
-      where: { id: userId },
-    });
-    if (!user) {
-      throw new Error('User not found');
+    // Validate user if provided
+    if (userId) {
+      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      if (!user) {
+        throw new NotFoundException('User not found');
+      }
+    }
+
+    // Parse and validate date
+    let eventDate: Date | undefined = undefined;
+    if (dto.date) {
+      const parsed = new Date(dto.date);
+      if (isNaN(parsed.getTime())) {
+        throw new BadRequestException(
+          'Invalid date. Use ISO 8601 format (e.g., "2026-01-10").',
+        );
+      }
+      eventDate = parsed;
     }
 
     return this.prisma.outsideEvent.create({
       data: {
         title: dto.title,
         description: dto.description,
+        date: eventDate,
         pointValue: dto.pointValue,
-        userId: userId || undefined, // Prisma handles null/undefined correctly
+        userId: userId || undefined,
       },
     });
   }
@@ -61,10 +98,21 @@ export class EventService {
   }
 
   async approveOutsideEvent(eventId: string) {
-    // 1. Fetch the outside event
+    // 1. Fetch the outside event with user (including fcmToken)
     const event = await this.prisma.outsideEvent.findUnique({
       where: { id: eventId },
-      include: { user: true },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstname: true,
+            lastname: true,
+            fcmToken: true,
+            point: true,
+            isEventApproveNotify: true,
+          },
+        },
+      },
     });
 
     if (!event) {
@@ -75,12 +123,12 @@ export class EventService {
       throw new BadRequestException('Event is already approved');
     }
 
-    if (!event.userId) {
+    if (!event.userId || !event.user) {
       throw new BadRequestException('Event is not associated with any user');
     }
 
-    // 2. Check if user was PRESENT on the event date
-    const eventDate = event.date as Date; // assume this is a Date object
+    // 2. Check attendance on event date
+    const eventDate = event.date as Date;
     const startOfDay = new Date(eventDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
 
@@ -90,7 +138,7 @@ export class EventService {
     const attendance = await this.prisma.attendence.findFirst({
       where: {
         userId: event.userId,
-        attendence: 'PRESENT', // must match your enum value
+        attendence: 'PRESENT',
         createdAt: {
           gte: startOfDay,
           lte: endOfDay,
@@ -104,26 +152,36 @@ export class EventService {
       );
     }
 
-    // 3. Update: approve event AND add points to user
-    return this.prisma.$transaction(async (tx) => {
-      // Update event
-      const updatedEvent = await tx.outsideEvent.update({
+    // 3. Perform DB update in transaction
+    const updatedEvent = await this.prisma.$transaction(async (tx) => {
+      const updated = await tx.outsideEvent.update({
         where: { id: eventId },
         data: { approved: true },
       });
 
-      // Add points to user
       await tx.user.update({
         where: { id: event.userId! },
         data: {
-          point: {
-            increment: event.pointValue,
-          },
+          point: { increment: event.pointValue },
         },
       });
 
-      return updatedEvent;
+      return updated;
     });
+
+    // 4. Send push notification (after successful DB update)
+    const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
+
+    if (fcmToken && isEventApproveNotify) {
+      await this.notification.sendPushNotification(
+        fcmToken,
+        'Points Awarded! 🎉',
+        `Your outside event "${event.title}" has been approved. ${event.pointValue} points added!`,
+        { status: 'approved', eventId: event.id },
+      );
+    }
+
+    return updatedEvent;
   }
 
   async getUserApprovedOutsideEventsWithSummary(userId: string) {

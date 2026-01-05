@@ -196,13 +196,15 @@ export class EnrollementService {
       return updatedEnrollment;
     });
 
-    // 6. Send notification
-    // await this.notification.sendPushNotification(
-    //   enrollment.user.fcmToken || '', // assuming you store FCM token in User
-    //   'Claim Approved!',
-    //   'Your claimed point has been approved.',
-    //   { status: 'approved' },
-    // );
+    if (enrollment.user.fcmToken && enrollment.user.isEventApproveNotify) {
+      //Send notification
+      await this.notification.sendPushNotification(
+        enrollment.user.fcmToken || '', // assuming you store FCM token in User
+        'Claim Approved!',
+        'Your claimed point has been approved.',
+        { status: 'approved' },
+      );
+    }
 
     return updated;
   }

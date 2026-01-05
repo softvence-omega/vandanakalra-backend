@@ -7,6 +7,6 @@ export class CreateAttendanceDto {
     description: 'username to mark attendance for',
     example: 'a1b2c3d4-...',
   })
-  @IsUUID()
+  @IsString()
   username: string;
 }

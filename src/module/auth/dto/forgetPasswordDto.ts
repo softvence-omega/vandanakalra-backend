@@ -25,14 +25,13 @@ export class ForgotPasswordDto {
 
 export class ResetPasswordDto {
   @ApiProperty({
-    description: '4-digit reset token sent via FCM notification',
-    example: '7392',
+    description: 'FCM tokent sent via FCM notification',
+    example: 'f91M40sUS36Shofdc5Q95y:APA91bGFm95AxYks3_xHeOr4I6oKtnxh9KDRcl0yTS1Y6-df0X2yONmsxxeqAZIUiNmloMbQNdizawlGkugUpPh0yTfEVWXNunBGsFP5VhVjQpBVhADN-Vc',
     minLength: 4,
     maxLength: 4,
   })
   @IsNotEmpty()
   @IsString()
-  @Length(4, 4, { message: 'Reset token must be exactly 4 characters' })
   token: string;
 
   @ApiProperty({
