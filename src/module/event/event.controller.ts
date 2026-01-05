@@ -114,14 +114,6 @@ export class EventController {
     summary: 'Approve an outside event and award points if user attended',
   })
   @ApiParam({ name: 'id', description: 'ID of the outside event' })
-  @ApiResponse({
-    status: 200,
-    description: 'Event approved and points awarded',
-  })
-  @ApiResponse({
-    status: 400,
-    description: 'User not present or already approved',
-  })
   async approveOutsideEvent(
     @Param('eventId') eventId: string,
     @Res() res: Response,
