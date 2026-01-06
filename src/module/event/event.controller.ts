@@ -266,10 +266,10 @@ export class EventController {
     });
   }
 
-  @Public()
   @Get('upcoming')
-  async getUpcomingEvents(@Res() res: Response) {
-    const result = await this.eventService.getUpcomingEvents();
+  async getUpcomingEvents(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id
+    const result = await this.eventService.getUpcomingEvents(userId);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,

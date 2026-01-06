@@ -296,24 +296,45 @@ export class EventService {
     return events;
   }
 
-  async getUpcomingEvents() {
+  async getUpcomingEvents(userId: string) {
     const now = new Date();
-    console.log('hello');
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
         date: {
           gt: now,
         },
       },
-      include: {
-        enrolled: true,
+      select: {
+        id: true,
+        date: true,
+        time:true,
+        // Add other event fields you need here (name, location, etc.)
+        title: true, // example
+        pointValue:true,
+        eventType:true,
+        maxStudent:true,
+        description:true,
+        createdAt:true,
+        enrolled: {
+          where: {
+            userId: userId, // assuming your field is `userId` (check casing!)
+          },
+          select: {
+            userId: true,
+          },
+        },
       },
       orderBy: {
-        date: 'asc', // Optional: sort by nearest upcoming first
+        date: 'asc',
       },
     });
 
-    return upcomingEvents;
+    // Map to add `enrolled: boolean`
+    const eventsWithEnrollmentStatus = upcomingEvents.map((event) => ({
+      ...event,
+      enrolled: event.enrolled.length > 0, // true if user is enrolled, false otherwise
+    }));
+    return eventsWithEnrollmentStatus;
   }
 
   async getAttendedEventsWithStats(userId: string) {
