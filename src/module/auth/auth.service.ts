@@ -81,7 +81,6 @@ export class AuthService {
       throw new ForbiddenException(`${dto.role} role is not allowed here `);
     }
 
-
     if (!user.isActive) {
       throw new ForbiddenException('Your account is not Active yet!');
     }
@@ -94,7 +93,7 @@ export class AuthService {
     if (!isMatch) {
       throw new ForbiddenException('Invalid credentials');
     }
-     
+
     const updateToken = await this.prisma.user.update({
       where: { username: dto.username },
       data: { fcmToken: dto.fcmToken },
@@ -341,7 +340,7 @@ export class AuthService {
     const resetToken = Math.floor(1000 + Math.random() * 9000).toString(); // e.g. "4829"
     const resetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const userUpdate=await this.prisma.user.update({
+    const userUpdate = await this.prisma.user.update({
       where: { id: user.id },
       data: {
         resetPasswordToken: resetToken,
@@ -357,10 +356,10 @@ export class AuthService {
       { status: 'success' },
     );
 
-    return resetToken
+    return resetToken;
   }
 
-  async resetPassword(token: string, newPassword: string){
+  async resetPassword(token: string, newPassword: string) {
     const user = await this.prisma.user.findFirst({
       where: {
         resetPasswordToken: token,
@@ -385,20 +384,18 @@ export class AuthService {
       },
     });
 
-        return updateUser
-
+    return updateUser;
   }
 
-  async isUserActive(fcmToken: string) {
-  const user = await this.prisma.user.findFirst({
-    where: { fcmToken: fcmToken },
-    select: { isActive: true, isDeleted: true }, // only fetch needed fields
-  });
+  async isUserActive(userId: string) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
 
-  if (!user || user.isDeleted) {
-    throw new NotFoundException('User not found');
+    if (!user || user.isDeleted) {
+      throw new NotFoundException('User not found');
+    }
+
+    return { user };
   }
-
-  return { isActive: user.isActive };
-}
 }

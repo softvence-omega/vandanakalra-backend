@@ -287,34 +287,34 @@ export class AuthController {
   }
 
   @Public()
-  @Get('active-status/:fcmToken')
+  @Get('me/:userId')
   @ApiOperation({
-    summary: 'Check if a user is active',
-    description: 'Returns whether the user account is active (isActive = true)',
+    summary: 'get user profile',
+    description: 'Returns  the user account ',
   })
   @ApiResponse({
     status: 200,
-    description: 'Successfully retrieved active status',
+    description: 'Successfully retrieved user profile',
     schema: {
       example: {
         statusCode: 200,
         success: true,
-        message: 'User active status retrieved',
+        message: 'User Profile retrieved',
         data: { isActive: true },
       },
     },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
   async checkUserActiveStatus(
-    @Param('fcmToken') fcmToken: string,
+    @Param('userId') userId: string,
     @Res() res: Response,
   ) {
-    const result = await this.authService.isUserActive(fcmToken);
+    const result = await this.authService.isUserActive(userId);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'User active status retrieved',
+      message: 'User profile retrieved',
        data:result,
     });
   }
