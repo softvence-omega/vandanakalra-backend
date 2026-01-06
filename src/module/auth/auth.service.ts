@@ -395,4 +395,13 @@ export class AuthService {
 
     return { user };
   }
+
+  async getUsers() {
+    const user = await this.prisma.user.findMany({
+      where: { isDeleted: false },
+    });
+
+
+    return { user };
+  }
 }

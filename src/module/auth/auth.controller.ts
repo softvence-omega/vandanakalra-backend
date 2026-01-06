@@ -262,10 +262,13 @@ export class AuthController {
   }
   @Public()
   @Post('forgot-password')
-  async forgotPassword(@Body() dto: ForgotPasswordDto, @Res() res: Response)  {
-    const result = await this.authService.forgotPassword(dto.username, dto.fcmToken);
+  async forgotPassword(@Body() dto: ForgotPasswordDto, @Res() res: Response) {
+    const result = await this.authService.forgotPassword(
+      dto.username,
+      dto.fcmToken,
+    );
 
-     return sendResponse(res, {
+    return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Reset Code sent successfully',
@@ -275,10 +278,13 @@ export class AuthController {
 
   @Public()
   @Post('forget-reset-password')
-  async resetPassword(@Body() dto: ResetPasswordDto , @Res() res: Response) {
-    const result = await this.authService.resetPassword(dto.token, dto.newPassword);
+  async resetPassword(@Body() dto: ResetPasswordDto, @Res() res: Response) {
+    const result = await this.authService.resetPassword(
+      dto.token,
+      dto.newPassword,
+    );
 
-     return sendResponse(res, {
+    return sendResponse(res, {
       statusCode: HttpStatus.CREATED,
       success: true,
       message: 'Reset Password successfull',
@@ -304,20 +310,27 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async getUserProfile(
-    @Param('userId') userId: string,
-    @Res() res: Response,
-  ) {
+  async getUserProfile(@Param('userId') userId: string, @Res() res: Response) {
     const result = await this.authService.getUserProfile(userId);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'User profile retrieved',
-       data:result,
+      data: result,
     });
   }
+  
 
-
-    
+  @Get('allUsers')
+  @Roles(userRole.ADMIN)
+  async getUsers(@Res() res: Response) {
+    const result = await this.authService.getUsers();
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'User profile retrieved',
+      data: result,
+    });
+  }
 }
