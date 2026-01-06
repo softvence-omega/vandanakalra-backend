@@ -286,10 +286,9 @@ export class AuthController {
     });
   }
 
-  @Public()
   @Get('me/:userId')
   @ApiOperation({
-    summary: 'get user profile',
+    summary: 'Check if a user is active',
     description: 'Returns  the user account ',
   })
   @ApiResponse({
@@ -305,11 +304,11 @@ export class AuthController {
     },
   })
   @ApiResponse({ status: 404, description: 'User not found' })
-  async checkUserActiveStatus(
+  async getUserProfile(
     @Param('userId') userId: string,
     @Res() res: Response,
   ) {
-    const result = await this.authService.isUserActive(userId);
+    const result = await this.authService.getUserProfile(userId);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
@@ -318,4 +317,7 @@ export class AuthController {
        data:result,
     });
   }
+
+
+    
 }

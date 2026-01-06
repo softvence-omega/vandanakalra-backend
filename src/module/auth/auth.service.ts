@@ -81,10 +81,6 @@ export class AuthService {
       throw new ForbiddenException(`${dto.role} role is not allowed here `);
     }
 
-    if (!user.isActive) {
-      throw new ForbiddenException('Your account is not Active yet!');
-    }
-
     if (user.isDeleted) {
       throw new BadRequestException('User is deleted!');
     }
@@ -98,7 +94,6 @@ export class AuthService {
       where: { username: dto.username },
       data: { fcmToken: dto.fcmToken },
     });
-
     const tokens = await getTokens(
       this.jwtService,
       user.id,
@@ -387,7 +382,9 @@ export class AuthService {
     return updateUser;
   }
 
-  async isUserActive(userId: string) {
+  
+
+  async getUserProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
     });
