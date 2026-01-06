@@ -197,7 +197,7 @@ export class AuthService {
   async updateProfile(
     userId: string,
     dto: UpdateUserProfileDto,
-    imageUrl: string | null,
+    imageUrl?: string | null,
   ) {
     // Optional: Validate that user exists
     const existingUser = await this.prisma.user.findUnique({

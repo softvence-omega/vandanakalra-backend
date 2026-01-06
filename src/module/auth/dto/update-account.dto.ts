@@ -42,7 +42,6 @@ export class UpdateUserProfileDto {
   })
   @IsOptional()
   @IsString()
-  @MinLength(1)
   firstname?: string;
 
   @ApiProperty({
@@ -52,7 +51,6 @@ export class UpdateUserProfileDto {
   })
   @IsOptional()
   @IsString()
-  @MinLength(1)
   lastname?: string;
 
   @ApiProperty({
