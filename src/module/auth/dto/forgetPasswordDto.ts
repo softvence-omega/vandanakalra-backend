@@ -13,7 +13,7 @@ export class ForgotPasswordDto {
   @ApiProperty({
     description: 'FCM device registration token for push notification',
     example:
-      'dQw4w9WgXcQ-abcdefghijklmnopqrstuvwxyz0123456789ABCDEF',
+      'f91M40sUS36Shofdc5Q95y:APA91bGFm95AxYks3_xHeOr4I6oKtnxh9KDRcl0yTS1Y6-df0X2yONmsxxeqAZIUiNmloMbQNdizawlGkugUpPh0yTfEVWXNunBGsFP5VhVjQpBVhADN-Vc',
     minLength: 10,
     maxLength: 255,
   })
@@ -26,7 +26,7 @@ export class ForgotPasswordDto {
 export class ResetPasswordDto {
   @ApiProperty({
     description: 'FCM tokent sent via FCM notification',
-    example: 'f91M40sUS36Shofdc5Q95y:APA91bGFm95AxYks3_xHeOr4I6oKtnxh9KDRcl0yTS1Y6-df0X2yONmsxxeqAZIUiNmloMbQNdizawlGkugUpPh0yTfEVWXNunBGsFP5VhVjQpBVhADN-Vc',
+    example: '1234',
     minLength: 4,
     maxLength: 4,
   })
