@@ -333,4 +333,16 @@ export class AuthController {
       data: result,
     });
   }
+
+  @Get('getTopFiveUserByPoint')
+  @Roles(userRole.ADMIN)
+  async getTopFiveUserByPoint(@Res() res: Response) {
+    const result = await this.authService.getTopFiveUserByPoint();
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Top 5 User  retrieved',
+      data: result,
+    });
+  }
 }

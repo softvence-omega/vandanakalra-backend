@@ -382,8 +382,6 @@ export class AuthService {
     return updateUser;
   }
 
-  
-
   async getUserProfile(userId: string) {
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -399,9 +397,23 @@ export class AuthService {
   async getUsers() {
     const user = await this.prisma.user.findMany({
       where: { isDeleted: false },
+      orderBy: {
+        point: 'desc', // 👈 descending order (highest to lowest)
+      },
     });
-
 
     return { user };
   }
+
+   async getTopFiveUserByPoint() {
+  const users = await this.prisma.user.findMany({
+    where: { isDeleted: false },
+    orderBy: {
+      point: 'desc',
+    },
+    take: 5, // 👈 limits result to top 5
+  });
+
+  return { users };
+}
 }
