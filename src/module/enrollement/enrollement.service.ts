@@ -10,7 +10,7 @@ import { Status, userRole } from '@prisma/client';
 import {
   ClaimPointsDto,
   CreateEnrollementDto,
-  UpdateEnrollementStatusDto,
+  UpdateEnrollmentStatusDto,
 } from './dto';
 import { NotificationService } from '../notification/notification.service';
 
@@ -137,7 +137,7 @@ export class EnrollementService {
   }
 
   // Admin-only: update enrollment status (e.g., ATTENDED)
-  async updateEnrollmentStatus(enrollmentId: string) {
+  async updateEnrollmentStatus(enrollmentId: string  , status :UpdateEnrollmentStatusDto) {
     // 1. Fetch enrollment with event and user
     const enrollment = await this.prisma.enrolled.findUnique({
       where: { id: enrollmentId },
@@ -201,14 +201,14 @@ export class EnrollementService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const updatedEnrollment = await tx.enrolled.update({
         where: { id: enrollmentId },
-        data: { status: 'ATTENDED' },
+        data: { status:status.status },
       });
 
       await tx.user.update({
         where: { id: enrollment.userId },
         data: { point: { increment: enrollment.event.pointValue } },
       });
-
+ 
       return updatedEnrollment;
     });
 

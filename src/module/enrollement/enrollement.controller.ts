@@ -14,7 +14,10 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { EnrollementService } from './enrollement.service';
-import { ClaimPointsDto, CreateEnrollementDto, UpdateEnrollementStatusDto } from './dto';
+import {
+  ClaimPointsDto,
+  UpdateEnrollmentStatusDto,
+} from './dto';
 import sendResponse from 'src/module/utils/sendResponse';
 import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
@@ -56,10 +59,11 @@ export class EnrollementController {
   async updateEnrollmentStatus(
     @Req() req: Request,
     @Res() res: Response,
+    @Body() body: UpdateEnrollmentStatusDto ,
     @Param('enrollmentId') enrollmentId: string,
   ) {
     const result =
-      await this.enrollmentService.updateEnrollmentStatus(enrollmentId);
+      await this.enrollmentService.updateEnrollmentStatus(enrollmentId , body);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
@@ -68,7 +72,7 @@ export class EnrollementController {
     });
   }
 
-   @Patch('claim-points')
+  @Patch('claim-points')
   @Roles(userRole.USER, userRole.ADMIN)
   @ApiResponse({
     status: 200,
@@ -81,7 +85,6 @@ export class EnrollementController {
   ) {
     const userId = req.user!.id; // assuming JWT strategy sets req.user
 
-
     const updatedEnrollments = await this.enrollmentService.claimPoints(
       claimDto,
       userId,
@@ -91,7 +94,7 @@ export class EnrollementController {
       statusCode: HttpStatus.OK,
       success: true,
       message: `Points claimed successfully for ${updatedEnrollments.length} enrollment(s)`,
-      data: updatedEnrollments
+      data: updatedEnrollments,
     });
   }
 

@@ -6,6 +6,7 @@ enum userRole {
 enum Status {
     JOIN
     ATTENDED
+    REJECTED
 }
 
 enum AttendanceStatus {

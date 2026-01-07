@@ -1,12 +1,14 @@
-import { IsNotEmpty, IsString, IsIn } from 'class-validator';
+import { IsNotEmpty, IsString, IsIn, isBoolean, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { Status } from '@prisma/client';
 
-export class UpdateEnrollementStatusDto {
-  @ApiProperty({ example: 'JOIN', description: 'Status to set (JOIN|ATTENDED)' })
+export class UpdateEnrollmentStatusDto {
+  @ApiProperty({
+    example: 'ATTENDED',
+    description: 'Status to set (JOIN | ATTENDED | REJECTED)',
+    enum: Status,
+  })
   @IsNotEmpty({ message: 'Status is required' })
-  @IsString()
-  @IsIn(['JOIN', 'ATTENDED'])
-  status: string;
-
-  
+  @IsEnum(Status, { message: 'Status must be one of: JOIN, ATTENDED, REJECTED' })
+  status: Status;
 }
