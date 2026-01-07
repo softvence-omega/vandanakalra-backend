@@ -297,11 +297,13 @@ export class EventService {
   }
 
   async getUpcomingEvents(userId: string) {
-    const now = new Date();
+  const now = new Date();
+  // Set to start of the day (00:00:00.000) in local time
+  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
         date: {
-          gte: now,
+          gte: startOfToday,
         },
       },
       select: {
