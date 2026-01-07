@@ -315,6 +315,7 @@ export class EventService {
         maxStudent:true,
         description:true,
         createdAt:true,
+        studentEnrolled:true,
         enrolled: {
           where: {
             userId: userId, // assuming your field is `userId` (check casing!)

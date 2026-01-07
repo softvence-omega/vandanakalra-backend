@@ -23,33 +23,49 @@ export class EnrollementService {
 
   // Create enrollment (user self-enrolls)
   async createEnrollment(userId: string, eventId: string) {
-    const event = await this.prisma.event.findUnique({
-      where: { id: eventId },
+    return this.prisma.$transaction(async (tx) => {
+      const event = await tx.event.findUnique({
+        where: { id: eventId },
+      });
+
+      if (!event) {
+        throw new BadRequestException('Event not found');
+      }
+
+      // Optional: check if event is full
+      if (event.studentEnrolled >= event.maxStudent) {
+        throw new BadRequestException('Event has reached maximum capacity');
+      }
+
+      // Check if already enrolled
+      const existing = await tx.enrolled.findUnique({
+        where: { userId_eventId: { userId, eventId } },
+      });
+
+      if (existing) {
+        throw new BadRequestException('Already enrolled in this event');
+      }
+
+      // Create enrollment
+      const enrollment = await tx.enrolled.create({
+        data: {
+          userId,
+          eventId,
+          status: Status.JOIN,
+        },
+        include: { event: true },
+      });
+
+      // Increment studentEnrolled
+      await tx.event.update({
+        where: { id: eventId },
+        data: {
+          studentEnrolled: { increment: 1 },
+        },
+      });
+
+      return enrollment;
     });
-
-    if (!event) {
-      throw new BadRequestException('Event not found');
-    }
-
-    // Check if already enrolled
-    const existing = await this.prisma.enrolled.findUnique({
-      where: { userId_eventId: { userId, eventId: eventId } },
-    });
-
-    if (existing) {
-      throw new BadRequestException('Already enrolled in this event');
-    }
-
-    const enrollment = await this.prisma.enrolled.create({
-      data: {
-        userId,
-        eventId: eventId,
-        status: Status.JOIN,
-      },
-      include: { event: true },
-    });
-
-    return enrollment;
   }
 
   async claimPoints(dto: ClaimPointsDto, userId: string) {

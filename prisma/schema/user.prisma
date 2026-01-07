@@ -45,7 +45,8 @@ model Event {
     pointValue  Int
     date        DateTime
     time        String
-    maxStudent  Int
+    maxStudent  Int 
+    studentEnrolled Int    @default(0)
     createdAt   DateTime   @default(now())
     enrolled    Enrolled[]
     eventType   String     @default("INSIDE") // OUTSIDE
