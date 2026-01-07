@@ -126,7 +126,8 @@ export class EnrollementService {
         status: 'JOIN', // as per your request
       },
       include: {
-        event: true, // include related event
+        event: true,
+        user:true, // include related event
       },
       orderBy: {
         createdAt: 'desc',
