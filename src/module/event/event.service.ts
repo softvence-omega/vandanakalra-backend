@@ -301,7 +301,7 @@ export class EventService {
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
         date: {
-          gt: now,
+          gte: now,
         },
       },
       select: {
