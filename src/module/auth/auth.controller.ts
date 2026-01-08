@@ -222,6 +222,7 @@ export class AuthController {
     });
   }
 
+  @Public()
   @Post('record-attendence')
   @ApiResponse({ status: 201, description: 'Attendance recorded successfully' })
   async createAttendance(
@@ -229,8 +230,7 @@ export class AuthController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    const userId = req.user!.id;
-    const result = await this.authService.createAttendance(userId, dto);
+    const result = await this.authService.createAttendance(dto.id);
 
     return sendResponse(res, {
       statusCode: HttpStatus.CREATED,

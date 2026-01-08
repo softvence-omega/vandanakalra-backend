@@ -4,9 +4,9 @@ import { AttendanceStatus } from '@prisma/client';
 
 export class CreateAttendanceDto {
   @ApiProperty({
-    description: 'username to mark attendance for',
+    description: 'id to mark attendance for',
     example: 'a1b2c3d4-...',
   })
   @IsString()
-  username: string;
+  id: string;
 }

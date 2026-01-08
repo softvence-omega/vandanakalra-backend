@@ -269,7 +269,7 @@ export class AuthService {
     return safeUser;
   }
 
-  async createAttendance(userId: string, dto: CreateAttendanceDto) {
+  async createAttendance(userId: string, ) {
     // 1. Validate user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
