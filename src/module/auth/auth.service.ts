@@ -269,7 +269,7 @@ export class AuthService {
     return safeUser;
   }
 
-  async createAttendance(userId: string, ) {
+  async createAttendance(userId: string) {
     // 1. Validate user exists
     const user = await this.prisma.user.findUnique({
       where: { id: userId },
@@ -281,28 +281,28 @@ export class AuthService {
     // 2. Define today's date range in UTC (or use your app's timezone consistently)
     const today = new Date();
     const now = new Date();
-const startOfPeriod = new Date(
-  Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    7, // 12:00 PM UTC
-    0,
-    0,
-    0
-  )
-);
-const endOfPeriod = new Date(
-  Date.UTC(
-    now.getUTCFullYear(),
-    now.getUTCMonth(),
-    now.getUTCDate(),
-    23, // 1:00 PM UTC
-    0,
-    0,
-    0
-  )
-);
+    const startOfPeriod = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        7, // 12:00 PM UTC
+        0,
+        0,
+        0,
+      ),
+    );
+    const endOfPeriod = new Date(
+      Date.UTC(
+        now.getUTCFullYear(),
+        now.getUTCMonth(),
+        now.getUTCDate(),
+        23, // 1:00 PM UTC
+        0,
+        0,
+        0,
+      ),
+    );
 
     // 3. Check if attendance already exists for this user today
     const existingAttendance = await this.prisma.attendence.findFirst({
