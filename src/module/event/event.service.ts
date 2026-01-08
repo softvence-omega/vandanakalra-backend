@@ -91,6 +91,9 @@ export class EventService {
       where: {
         approved: false,
       },
+      include:{
+        user:true
+      },
       orderBy: {
         createdAt: 'desc',
       },

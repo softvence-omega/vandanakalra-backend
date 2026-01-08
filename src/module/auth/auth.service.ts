@@ -106,37 +106,82 @@ export class AuthService {
     return { user, ...tokens };
   }
 
-  async active_account(userId: string) {
+  async active_account(dto: AccountActiveDto) {
     const user = await this.prisma.user.findUnique({
-      where: { id: userId },
+      where: { id: dto.userId },
     });
 
     if (!user) {
       throw new ForbiddenException('User not found');
     }
 
+    // Handle rejection case
+    if (dto.isActiveOrReject === 'REJECT') {
+      // If user is already deleted, no need to update
+      if (user.isDeleted) {
+        return { updateUser: { ...user, isDeleted: true } };
+      }
+
+      const updateUser = await this.prisma.user.update({
+        where: { id: dto.userId },
+        data: {
+          isDeleted: true,
+          isActive: false, // Explicitly set to false for clarity
+        },
+        select: {
+          id: true,
+          isActive: true,
+          isDeleted: true,
+          fcmToken: true,
+        },
+      });
+
+      // Send rejection notification
+      if (updateUser.fcmToken) {
+        await this.notification.sendPushNotification(
+          updateUser.fcmToken,
+          'Registration Rejected',
+          'Your account registration has been rejected by the admin.',
+          { status: 'rejected' },
+        );
+      }
+
+      return { updateUser };
+    }
+
+    // Handle approval case (APPROVE)
+    if (user.isActive) {
+      // Already approved - just return current state
+      return { updateUser: user };
+    }
+
     if (user.isDeleted) {
-      throw new BadRequestException('User is deleted!');
+      throw new BadRequestException('Cannot approve a deleted user!');
     }
 
     const updateUser = await this.prisma.user.update({
-      where: { id: userId },
-      data: { isActive: true },
+      where: { id: dto.userId },
+      data: {
+        isActive: true,
+        isDeleted: false, // Ensure deleted status is cleared
+      },
       select: {
-        // Specify the fields to return
         id: true,
         isActive: true,
-        fcmToken: true, // Include the fcmToken field in the result
+        isDeleted: true,
+        fcmToken: true,
       },
     });
 
-    // const user = await this.userService.findById(userId);
-    const response = await this.notification.sendPushNotification(
-      updateUser.fcmToken as string,
-      'Registration Approved!',
-      'Your account has been approved By admin . You can now log in .',
-      { status: 'approved' },
-    );
+    // Send approval notification
+    if (updateUser.fcmToken) {
+      await this.notification.sendPushNotification(
+        updateUser.fcmToken,
+        'Registration Approved!',
+        'Your account has been approved by admin. You can now log in.',
+        { status: 'approved' },
+      );
+    }
 
     return { updateUser };
   }
@@ -405,15 +450,26 @@ export class AuthService {
     return { user };
   }
 
-   async getTopFiveUserByPoint() {
-  const users = await this.prisma.user.findMany({
-    where: { isDeleted: false },
-    orderBy: {
-      point: 'desc',
-    },
-    take: 5, // 👈 limits result to top 5
-  });
+  async getNotActiveteUser() {
+    const user = await this.prisma.user.findMany({
+      where: { isDeleted: false, isActive: false },
+      orderBy: {
+        createdAt: 'desc', // 👈 descending order (highest to lowest)
+      },
+    });
 
-  return { users };
-}
+    return { user };
+  }
+
+  async getTopFiveUserByPoint() {
+    const users = await this.prisma.user.findMany({
+      where: { isDeleted: false },
+      orderBy: {
+        point: 'desc',
+      },
+      take: 5, // 👈 limits result to top 5
+    });
+
+    return { users };
+  }
 }

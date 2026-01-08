@@ -165,7 +165,7 @@ export class AuthController {
     @Res() res: Response,
     @Req() req: Request,
   ) {
-    const result = await this.authService.active_account(dto.userId);
+    const result = await this.authService.active_account(dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
@@ -320,7 +320,6 @@ export class AuthController {
       data: result,
     });
   }
-  
 
   @Get('allUsers')
   @Roles(userRole.ADMIN)
@@ -342,6 +341,18 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Top 5 User  retrieved',
+      data: result,
+    });
+  }
+
+  @Get('notActivatedUsers')
+  @Roles(userRole.ADMIN)
+  async getNotActiveteUser(@Res() res: Response) {
+    const result = await this.authService.getNotActiveteUser();
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'User retrieved succefully',
       data: result,
     });
   }

@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import {
   IsBoolean,
+  IsIn,
   IsOptional,
   IsString,
   isString,
@@ -9,12 +10,21 @@ import {
 
 export class AccountActiveDto {
   @ApiProperty({
-    description: 'Whether the account is active',
+    description: 'User ID',
     type: String,
     required: true,
   })
   @IsString()
   userId: string;
+
+  @ApiProperty({
+    description: 'Action to perform: "APPROVE" or "REJECT"',
+    enum: ['APPROVE', 'REJECT'],
+    required: true,
+  })
+  @IsString()
+  @IsIn(['APPROVE', 'REJECT'])
+  isActiveOrReject: string;
 }
 
 export class ChangePasswordDto {
