@@ -43,7 +43,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(
       dto.password,
-      parseInt(process.env.SALT_ROUND!),
+      parseInt(process.env.SALT_ROUND!, 10),
     );
 
     const newUser = await this.prisma.user.create({
@@ -56,6 +56,30 @@ export class AuthService {
       },
     });
 
+    // 🔔 Notify all active admins about new registration
+    const adminUsers = await this.prisma.user.findMany({
+      where: {
+        role: 'ADMIN', // or userRole.ADMIN if using enum
+        isActive: true,
+        isDeleted: false,
+        fcmToken: { not: null },
+      },
+      select: { fcmToken: true },
+    });
+
+    const adminFcmTokens = adminUsers
+      .map((admin) => admin.fcmToken!)
+      .filter((token): token is string => Boolean(token));
+
+    if (adminFcmTokens.length > 0) {
+      await this.notification.sendBulkPushNotification(
+        adminFcmTokens,
+        '🆕 New User Registration',
+        `A new user "${newUser.firstname} ${newUser.lastname}" has registered.`,
+        { eventType: 'new_user_registration', userId: newUser.id },
+      );
+    }
+
     const tokens = await getTokens(
       this.jwtService,
       newUser.id,
@@ -64,6 +88,7 @@ export class AuthService {
       newUser.firstname,
       newUser.lastname,
     );
+
     return { user: newUser, ...tokens };
   }
 
