@@ -93,7 +93,7 @@ export class EnrollementController {
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: `Points claimed successfully for ${updatedEnrollments.length} enrollment(s)`,
+      message: `Points claimed successfully for enrollment`,
       data: updatedEnrollments,
     });
   }

@@ -25,6 +25,8 @@ import { CreateOutsideEventDto } from './dto/create-outside.dto';
 import {
   ApproveOutsideEventDto,
   NotificationEventDto,
+  UpdateAdminSettingsDto,
+  UpdateUserNotificationSettingsDto,
 } from './dto/update-event.dto';
 
 @Controller('event')
@@ -222,7 +224,6 @@ export class EventController {
     @Res() res: Response,
   ) {
     const userId = (req as any).user?.id;
-  
 
     const result = await this.eventService.NotificationEventUpdate(userId, dto);
 
@@ -302,6 +303,47 @@ export class EventController {
       data: result,
     });
   }
+
+  @Get('getUserSettings')
+    @Roles(userRole.USER)
+  async getUserNotificationSettings(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
+    const result = await this.eventService.getUserNotificationSettings(userId);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'User notification settings retirived successfully',
+      data: result,
+    });
+  }
+  
+  @Get('getAdminSettings')
+  @Roles(userRole.ADMIN)
+  async getAdminSettings(@Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
+    const result = await this.eventService.getAdminSettings(userId);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'admin settings retrieved successfully',
+      data: result,
+    });
+  }
+
+  @Put('updateAdminSettings')
+  @Roles(userRole.ADMIN)
+  async updateAdminSettings(@Body() dto : UpdateAdminSettingsDto , @Req() req: Request, @Res() res: Response) {
+    const userId = req.user!.id;
+    const result = await this.eventService.updateAdminSettings(dto , userId);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'admin settings updated successfully',
+      data: result,
+    });
+  }
+
+  
 
   // Get event by ID
   @Public()

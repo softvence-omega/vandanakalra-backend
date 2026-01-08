@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
-import { Status, userRole } from '@prisma/client';
+import { Enrolled, Status, userRole } from '@prisma/client';
 import {
   ClaimPointsDto,
   CreateEnrollementDto,
@@ -71,20 +71,32 @@ export class EnrollementService {
   async claimPoints(dto: ClaimPointsDto, userId: string) {
     const { enrolledIds } = dto;
 
-    // 1. Fetch all enrollments in one query
+    // Fetch admin to check auto-approve setting
+    const admin = await this.prisma.user.findFirst({
+      where: { role: userRole.ADMIN },
+      select: { adminAutoApprovePoint: true }, // only fetch needed field
+    });
+
+    const isAutoApprove = admin?.adminAutoApprovePoint === true;
+
+    // 1. Fetch enrollments
     const enrollments = await this.prisma.enrolled.findMany({
       where: {
         id: { in: enrolledIds },
-        userId: userId, // 🔒 ensure user owns these enrollments (security!)
+        userId: userId,
       },
       include: {
-        event: {
-          select: { pointValue: true },
+        event: { select: { pointValue: true } },
+        user: {
+          select: {
+            fcmToken: true,
+            isEventApproveNotify: true,
+          },
         },
       },
     });
 
-    // 2. Validate: all IDs must exist and belong to the user
+    // 2. Validate existence
     const foundIds = new Set(enrollments.map((e) => e.id));
     const missingIds = enrolledIds.filter((id) => !foundIds.has(id));
     if (missingIds.length > 0) {
@@ -93,7 +105,7 @@ export class EnrollementService {
       );
     }
 
-    // 3. Validate each enrollment
+    // 3. Validate enrollment state
     for (const e of enrollments) {
       if (e.status !== 'JOIN') {
         throw new BadRequestException(
@@ -107,17 +119,54 @@ export class EnrollementService {
       }
     }
 
-    // 4. Update all in a transaction
-    return await this.prisma.$transaction(async (tx) => {
-      const updatePromises = enrollments.map((e) =>
-        tx.enrolled.update({
-          where: { id: e.id },
-          data: { claimPoint: true },
-        }),
-      );
+    // 4. Branch logic: auto-approve vs manual claim
+    if (isAutoApprove) {
+      const updatedEnrollments = await this.prisma.$transaction(async (tx) => {
+        const results: Enrolled[] = [];
+        for (const e of enrollments) {
+          // Update enrollment
+          const updated = await tx.enrolled.update({
+            where: { id: e.id },
+            data: {
+              status: 'ATTENDED', // Prisma accepts string if it matches enum
+              claimPoint: true,
+            },
+          });
 
-      return await Promise.all(updatePromises);
-    });
+          // Award points
+          await tx.user.update({
+            where: { id: userId },
+            data: { point: { increment: e.event.pointValue } },
+          });
+
+          // Notify
+          if (e.user.fcmToken && e.user.isEventApproveNotify) {
+            await this.notification.sendPushNotification(
+              e.user.fcmToken,
+              'Claim Approved!',
+              'Your claimed point has been approved.',
+              { status: 'approved' },
+            );
+          }
+
+          results.push(updated);
+        }
+        return results;
+      });
+
+      return {updatedEnrollments ,  message: `Points successfully claimed! You’ve earned Points`}; // matches Promise<Enrolled[]>
+    } else {
+      // 🕒 MANUAL: just flag for admin review (existing logic)
+      return await this.prisma.$transaction(async (tx) => {
+        const updatePromises = enrollments.map((e) =>
+          tx.enrolled.update({
+            where: { id: e.id },
+            data: { claimPoint: true },
+          }),
+        );
+        return await Promise.all(updatePromises);
+      });
+    }
   }
   async getAllClaimedWithJoinStatus() {
     const records = await this.prisma.enrolled.findMany({
@@ -127,7 +176,7 @@ export class EnrollementService {
       },
       include: {
         event: true,
-        user:true, // include related event
+        user: true, // include related event
       },
       orderBy: {
         createdAt: 'desc',
@@ -138,7 +187,10 @@ export class EnrollementService {
   }
 
   // Admin-only: update enrollment status (e.g., ATTENDED)
-  async updateEnrollmentStatus(enrollmentId: string  , status :UpdateEnrollmentStatusDto) {
+  async updateEnrollmentStatus(
+    enrollmentId: string,
+    status: UpdateEnrollmentStatusDto,
+  ) {
     // 1. Fetch enrollment with event and user
     const enrollment = await this.prisma.enrolled.findUnique({
       where: { id: enrollmentId },
@@ -202,14 +254,14 @@ export class EnrollementService {
     const updated = await this.prisma.$transaction(async (tx) => {
       const updatedEnrollment = await tx.enrolled.update({
         where: { id: enrollmentId },
-        data: { status:status.status },
+        data: { status: status.status },
       });
 
       await tx.user.update({
         where: { id: enrollment.userId },
         data: { point: { increment: enrollment.event.pointValue } },
       });
- 
+
       return updatedEnrollment;
     });
 

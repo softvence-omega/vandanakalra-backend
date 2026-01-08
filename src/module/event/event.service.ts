@@ -6,7 +6,13 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { ApproveOutsideEventDto, NotificationEventDto, UpdateEventDto } from './dto/update-event.dto';
+import {
+  ApproveOutsideEventDto,
+  NotificationEventDto,
+  UpdateAdminSettingsDto,
+  UpdateEventDto,
+  UpdateUserNotificationSettingsDto,
+} from './dto/update-event.dto';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
 import { NotificationService } from '../notification/notification.service';
 
@@ -18,9 +24,7 @@ export class EventService {
   ) {}
 
   async createEvent(createEventDto: CreateEventDto, userId?: string) {
-    // Check if user exists
-
-    // Create event
+    // 1. Create the event
     const event = await this.prisma.event.create({
       data: {
         title: createEventDto.title,
@@ -33,30 +37,64 @@ export class EventService {
         userId: userId,
       },
     });
-    const users = await this.prisma.user.findMany({
+
+    // 2. Check if ANY active admin has adminCreateEventNotify enabled
+    const adminWithNotifyEnabled = await this.prisma.user.findFirst({
       where: {
-        isNewEventNotify: true,
+        role: 'ADMIN', // or userRole.ADMIN if it's an enum
         isActive: true,
         isDeleted: false,
-        fcmToken: { not: null },
+        adminCreateEventNotify: true,
       },
-      select: { fcmToken: true },
     });
 
-    const fcmTokens = users.map((u) => u.fcmToken!).filter(Boolean);
+    // 3. Only send notifications if enabled by admin settings
+    if (adminWithNotifyEnabled) {
+      const users = await this.prisma.user.findMany({
+        where: {
+          isNewEventNotify: true,
+          isActive: true,
+          isDeleted: false,
+          fcmToken: { not: null },
+        },
+        select: { fcmToken: true },
+      });
 
-    if (fcmTokens.length > 0) {
-      await this.notification.sendBulkPushNotification(
-        fcmTokens,
-        '🎉 New Event Created!',
-        `A new event "${event.title}" is now available!`,
-        { eventType: 'new_event', eventId: event.id },
-      );
+      const fcmTokens = users
+        .map((u) => u.fcmToken!)
+        .filter((token): token is string => Boolean(token)); // TypeScript-safe filter
+
+      if (fcmTokens.length > 0) {
+        await this.notification.sendBulkPushNotification(
+          fcmTokens,
+          '🎉 New Event Created!',
+          `A new event "${event.title}" is now available!`,
+          { eventType: 'new_event', eventId: event.id },
+        );
+      }
     }
+
+    return event; // 👈 don't forget to return the event!
   }
 
   async createOutsideEvent(dto: CreateOutsideEventDto, userId?: string) {
-    // Validate user if provided
+    // 1. Check if any active admin allows custom (outside) events
+    const adminAllowingCustom = await this.prisma.user.findFirst({
+      where: {
+        role: 'ADMIN', // or userRole.ADMIN if using enum
+        isActive: true,
+        isDeleted: false,
+        adminAllowCustomPoint: true,
+      },
+    });
+
+    if (!adminAllowingCustom) {
+      throw new ForbiddenException(
+        'Outside event creation is currently disabled by the administrator.',
+      );
+    }
+
+    // 2. Validate user if provided
     if (userId) {
       const user = await this.prisma.user.findUnique({ where: { id: userId } });
       if (!user) {
@@ -64,7 +102,7 @@ export class EventService {
       }
     }
 
-    // Parse and validate date
+    // 3. Parse and validate date
     let eventDate: Date | undefined = undefined;
     if (dto.date) {
       const parsed = new Date(dto.date);
@@ -76,6 +114,7 @@ export class EventService {
       eventDate = parsed;
     }
 
+    // 4. Create the outside event
     return this.prisma.outsideEvent.create({
       data: {
         title: dto.title,
@@ -91,8 +130,8 @@ export class EventService {
       where: {
         approved: false,
       },
-      include:{
-        user:true
+      include: {
+        user: true,
       },
       orderBy: {
         createdAt: 'desc',
@@ -100,115 +139,115 @@ export class EventService {
     });
   }
 
-async approveOutsideEvent(dto: ApproveOutsideEventDto) {
-  const { eventId, isActiveOrReject } = dto;
+  async approveOutsideEvent(dto: ApproveOutsideEventDto) {
+    const { eventId, isActiveOrReject } = dto;
 
-  // 1. Fetch the outside event with user (including fcmToken)
-  const event = await this.prisma.outsideEvent.findUnique({
-    where: { id: eventId },
-    include: {
-      user: {
-        select: {
-          id: true,
-          firstname: true,
-          lastname: true,
-          fcmToken: true,
-          point: true,
-          isEventApproveNotify: true,
-        },
-      },
-    },
-  });
-
-  if (!event) {
-    throw new NotFoundException('Outside event not found');
-  }
-
-  if (event.approved) {
-    throw new BadRequestException('Event is already approved');
-  }
-
-  if (!event.userId || !event.user) {
-    throw new BadRequestException('Event is not associated with any user');
-  }
-
-  const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
-
-  if (isActiveOrReject === 'APPROVE') {
-    // Check attendance only for approval
-    const eventDate = event.date as Date;
-    const startOfDay = new Date(eventDate);
-    startOfDay.setUTCHours(0, 0, 0, 0);
-
-    const endOfDay = new Date(eventDate);
-    endOfDay.setUTCHours(23, 59, 59, 999);
-
-    const attendance = await this.prisma.attendence.findFirst({
-      where: {
-        userId: event.userId,
-        attendence: 'PRESENT',
-        createdAt: {
-          gte: startOfDay,
-          lte: endOfDay,
-        },
-      },
-    });
-
-    if (!attendance) {
-      throw new BadRequestException(
-        'User was not marked as PRESENT on the event date. Cannot approve.',
-      );
-    }
-
-    // Perform approval: update event + add points
-    const updatedEvent = await this.prisma.$transaction(async (tx) => {
-      const updated = await tx.outsideEvent.update({
-        where: { id: eventId },
-        data: { approved: true },
-      });
-
-      await tx.user.update({
-        where: { id: event.userId! },
-        data: {
-          point: { increment: event.pointValue },
-        },
-      });
-
-      return updated;
-    });
-
-    // Send approval notification
-    if (fcmToken && isEventApproveNotify) {
-      await this.notification.sendPushNotification(
-        fcmToken,
-        'Points Awarded! 🎉',
-        `Your outside event "${event.title}" has been approved. ${event.pointValue} points added!`,
-        { status: 'approved', eventId: event.id },
-      );
-    }
-
-    return updatedEvent;
-  } else if (isActiveOrReject === 'REJECT') {
-    // Reject: delete the outside event
-    await this.prisma.outsideEvent.delete({
+    // 1. Fetch the outside event with user (including fcmToken)
+    const event = await this.prisma.outsideEvent.findUnique({
       where: { id: eventId },
+      include: {
+        user: {
+          select: {
+            id: true,
+            firstname: true,
+            lastname: true,
+            fcmToken: true,
+            point: true,
+            isEventApproveNotify: true,
+          },
+        },
+      },
     });
 
-    // Optional: Send rejection notification
-    if (fcmToken && isEventApproveNotify) {
-      await this.notification.sendPushNotification(
-        fcmToken,
-        'Event Rejected ❌',
-        `Your outside event "${event.title}" was not approved and has been removed.`,
-        { status: 'rejected', eventId: event.id },
-      );
+    if (!event) {
+      throw new NotFoundException('Outside event not found');
     }
 
-    return { success: true, message: 'Event rejected and deleted' };
-  }
+    if (event.approved) {
+      throw new BadRequestException('Event is already approved');
+    }
 
-  throw new BadRequestException('Invalid isActiveOrReject value');
-}
+    if (!event.userId || !event.user) {
+      throw new BadRequestException('Event is not associated with any user');
+    }
+
+    const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
+
+    if (isActiveOrReject === 'APPROVE') {
+      // Check attendance only for approval
+      const eventDate = event.date as Date;
+      const startOfDay = new Date(eventDate);
+      startOfDay.setUTCHours(0, 0, 0, 0);
+
+      const endOfDay = new Date(eventDate);
+      endOfDay.setUTCHours(23, 59, 59, 999);
+
+      const attendance = await this.prisma.attendence.findFirst({
+        where: {
+          userId: event.userId,
+          attendence: 'PRESENT',
+          createdAt: {
+            gte: startOfDay,
+            lte: endOfDay,
+          },
+        },
+      });
+
+      if (!attendance) {
+        throw new BadRequestException(
+          'User was not marked as PRESENT on the event date. Cannot approve.',
+        );
+      }
+
+      // Perform approval: update event + add points
+      const updatedEvent = await this.prisma.$transaction(async (tx) => {
+        const updated = await tx.outsideEvent.update({
+          where: { id: eventId },
+          data: { approved: true },
+        });
+
+        await tx.user.update({
+          where: { id: event.userId! },
+          data: {
+            point: { increment: event.pointValue },
+          },
+        });
+
+        return updated;
+      });
+
+      // Send approval notification
+      if (fcmToken && isEventApproveNotify) {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Points Awarded! 🎉',
+          `Your outside event "${event.title}" has been approved. ${event.pointValue} points added!`,
+          { status: 'approved', eventId: event.id },
+        );
+      }
+
+      return updatedEvent;
+    } else if (isActiveOrReject === 'REJECT') {
+      // Reject: delete the outside event
+      await this.prisma.outsideEvent.delete({
+        where: { id: eventId },
+      });
+
+      // Optional: Send rejection notification
+      if (fcmToken && isEventApproveNotify) {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Event Rejected ❌',
+          `Your outside event "${event.title}" was not approved and has been removed.`,
+          { status: 'rejected', eventId: event.id },
+        );
+      }
+
+      return { success: true, message: 'Event rejected and deleted' };
+    }
+
+    throw new BadRequestException('Invalid isActiveOrReject value');
+  }
 
   async getUserApprovedOutsideEventsWithSummary(userId: string) {
     // 1. Fetch all approved outside events for the user
@@ -297,45 +336,45 @@ async approveOutsideEvent(dto: ApproveOutsideEventDto) {
     return updatedEvent;
   }
 
-async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
-  // Optional: verify user exists
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-  });
+  async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
+    // Optional: verify user exists
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+    });
 
-  if (!user) {
-    throw new NotFoundException('User not found');
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Build update payload dynamically — only include fields that are defined
+    const updateData: {
+      isEventApproveNotify?: boolean;
+      isNewEventNotify?: boolean;
+      isEventReminder?: boolean;
+    } = {};
+
+    if (dto.isEventApproveNotify !== undefined) {
+      updateData.isEventApproveNotify = dto.isEventApproveNotify;
+    }
+    if (dto.isNewEventNotify !== undefined) {
+      updateData.isNewEventNotify = dto.isNewEventNotify;
+    }
+    if (dto.isEventReminder !== undefined) {
+      updateData.isEventReminder = dto.isEventReminder;
+    }
+
+    // Only proceed if at least one field is provided
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('No valid fields to update');
+    }
+
+    const updatedUser = await this.prisma.user.update({
+      where: { id: userId },
+      data: updateData,
+    });
+
+    return updatedUser;
   }
-
-  // Build update payload dynamically — only include fields that are defined
-  const updateData: {
-    isEventApproveNotify?: boolean;
-    isNewEventNotify?: boolean;
-    isEventReminder?: boolean;
-  } = {};
-
-  if (dto.isEventApproveNotify !== undefined) {
-    updateData.isEventApproveNotify = dto.isEventApproveNotify;
-  }
-  if (dto.isNewEventNotify !== undefined) {
-    updateData.isNewEventNotify = dto.isNewEventNotify;
-  }
-  if (dto.isEventReminder !== undefined) {
-    updateData.isEventReminder = dto.isEventReminder;
-  }
-
-  // Only proceed if at least one field is provided
-  if (Object.keys(updateData).length === 0) {
-    throw new BadRequestException('No valid fields to update');
-  }
-
-  const updatedUser = await this.prisma.user.update({
-    where: { id: userId },
-    data: updateData,
-  });
-
-  return updatedUser;
-}
   async getEventById(eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },
@@ -362,9 +401,13 @@ async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
   }
 
   async getUpcomingEvents(userId: string) {
-  const now = new Date();
-  // Set to start of the day (00:00:00.000) in local time
-  const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const now = new Date();
+    // Set to start of the day (00:00:00.000) in local time
+    const startOfToday = new Date(
+      now.getFullYear(),
+      now.getMonth(),
+      now.getDate(),
+    );
     const upcomingEvents = await this.prisma.event.findMany({
       where: {
         date: {
@@ -374,15 +417,15 @@ async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
       select: {
         id: true,
         date: true,
-        time:true,
+        time: true,
         // Add other event fields you need here (name, location, etc.)
         title: true, // example
-        pointValue:true,
-        eventType:true,
-        maxStudent:true,
-        description:true,
-        createdAt:true,
-        studentEnrolled:true,
+        pointValue: true,
+        eventType: true,
+        maxStudent: true,
+        description: true,
+        createdAt: true,
+        studentEnrolled: true,
         enrolled: {
           where: {
             userId: userId, // assuming your field is `userId` (check casing!)
@@ -480,4 +523,109 @@ async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
 
     return deletedEvent;
   }
+
+
+  // user.service.ts (or setting.service.ts)
+
+async getAdminSettings(userId :string) {
+  // Find any active, non-deleted admin (settings are global, so one is enough)
+  const admin = await this.prisma.user.findFirst({
+    where: {
+      id:userId
+    },
+    select: {
+      adminAutoApprovePoint: true,
+      adminAllowCustomPoint: true,
+      adminCreateEventNotify: true,
+      adminEventReminders: true,
+    },
+  });
+
+  // Fallback to defaults if no admin exists (optional but safe)
+  return {
+    adminAutoApprovePoint: admin?.adminAutoApprovePoint ?? true,
+    adminAllowCustomPoint: admin?.adminAllowCustomPoint ?? true,
+    adminCreateEventNotify: admin?.adminCreateEventNotify ?? true,
+    adminEventReminders: admin?.adminEventReminders ?? true,
+  };
+}
+
+async getUserNotificationSettings(userId: string) {
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+    select: {
+      isEventApproveNotify: true,
+      isNewEventNotify: true,
+      isEventReminder: true,
+    },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  return user;
+}
+
+
+async updateAdminSettings(dto: UpdateAdminSettingsDto , userId:string) {
+  // Find an active, non-deleted admin to update
+  const admin = await this.prisma.user.findFirst({
+    where: {
+      id:userId
+    },
+    select: { id: true },
+  });
+
+  if (!admin) {
+    throw new NotFoundException('No active admin found to update settings');
+  }
+
+  // Build update payload: only include fields that are defined
+  const updateData: {
+    adminAutoApprovePoint?: boolean;
+    adminAllowCustomPoint?: boolean;
+    adminCreateEventNotify?: boolean;
+    adminEventReminders?: boolean;
+  } = {};
+
+  if (dto.adminAutoApprovePoint !== undefined) {
+    updateData.adminAutoApprovePoint = dto.adminAutoApprovePoint;
+  }
+  if (dto.adminAllowCustomPoint !== undefined) {
+    updateData.adminAllowCustomPoint = dto.adminAllowCustomPoint;
+  }
+  if (dto.adminCreateEventNotify !== undefined) {
+    updateData.adminCreateEventNotify = dto.adminCreateEventNotify;
+  }
+  if (dto.adminEventReminders !== undefined) {
+    updateData.adminEventReminders = dto.adminEventReminders;
+  }
+
+  if (Object.keys(updateData).length === 0) {
+    throw new BadRequestException('No valid fields provided for update');
+  }
+
+  // Update the admin user
+  await this.prisma.user.update({
+    where: { id: admin.id },
+     data: updateData,
+  });
+
+  // Return the updated values (for confirmation)
+  const updatedAdmin = await this.prisma.user.findUnique({
+    where: { id: admin.id },
+    select: {
+      adminAutoApprovePoint: true,
+      adminAllowCustomPoint: true,
+      adminCreateEventNotify: true,
+      adminEventReminders: true,
+    },
+  });
+
+  return updatedAdmin as UpdateAdminSettingsDto;
+}
+
+
+
 }
