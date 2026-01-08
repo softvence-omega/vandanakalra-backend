@@ -21,6 +21,7 @@ import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { userRole } from '@prisma/client';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
+import { ApproveOutsideEventDto } from './dto/update-event.dto';
 
 @Controller('event')
 export class EventController {
@@ -109,21 +110,21 @@ export class EventController {
     });
   }
 
-  @Patch('approve-outside-event/:eventId')
+  @Patch('approveOrReject-outside-event')
   @Roles(userRole.ADMIN)
   @ApiOperation({
     summary: 'Approve an outside event and award points if user attended',
   })
   async approveOutsideEvent(
-    @Param('eventId') eventId: string,
+    @Body() dto: ApproveOutsideEventDto,
     @Res() res: Response,
   ) {
-    const result = await this.eventService.approveOutsideEvent(eventId);
+    const result = await this.eventService.approveOutsideEvent(dto);
 
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'Outside event approved and points added to user',
+      message: 'succefully approve or reject  oparation done ',
       data: result,
     });
   }

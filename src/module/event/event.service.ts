@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { UpdateEventDto } from './dto/update-event.dto';
+import { ApproveOutsideEventDto, UpdateEventDto } from './dto/update-event.dto';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
 import { NotificationService } from '../notification/notification.service';
 
@@ -100,37 +100,42 @@ export class EventService {
     });
   }
 
-  async approveOutsideEvent(eventId: string) {
-    // 1. Fetch the outside event with user (including fcmToken)
-    const event = await this.prisma.outsideEvent.findUnique({
-      where: { id: eventId },
-      include: {
-        user: {
-          select: {
-            id: true,
-            firstname: true,
-            lastname: true,
-            fcmToken: true,
-            point: true,
-            isEventApproveNotify: true,
-          },
+async approveOutsideEvent(dto: ApproveOutsideEventDto) {
+  const { eventId, isActiveOrReject } = dto;
+
+  // 1. Fetch the outside event with user (including fcmToken)
+  const event = await this.prisma.outsideEvent.findUnique({
+    where: { id: eventId },
+    include: {
+      user: {
+        select: {
+          id: true,
+          firstname: true,
+          lastname: true,
+          fcmToken: true,
+          point: true,
+          isEventApproveNotify: true,
         },
       },
-    });
+    },
+  });
 
-    if (!event) {
-      throw new NotFoundException('Outside event not found');
-    }
+  if (!event) {
+    throw new NotFoundException('Outside event not found');
+  }
 
-    if (event.approved) {
-      throw new BadRequestException('Event is already approved');
-    }
+  if (event.approved) {
+    throw new BadRequestException('Event is already approved');
+  }
 
-    if (!event.userId || !event.user) {
-      throw new BadRequestException('Event is not associated with any user');
-    }
+  if (!event.userId || !event.user) {
+    throw new BadRequestException('Event is not associated with any user');
+  }
 
-    // 2. Check attendance on event date
+  const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
+
+  if (isActiveOrReject === 'APPROVE') {
+    // Check attendance only for approval
     const eventDate = event.date as Date;
     const startOfDay = new Date(eventDate);
     startOfDay.setUTCHours(0, 0, 0, 0);
@@ -155,7 +160,7 @@ export class EventService {
       );
     }
 
-    // 3. Perform DB update in transaction
+    // Perform approval: update event + add points
     const updatedEvent = await this.prisma.$transaction(async (tx) => {
       const updated = await tx.outsideEvent.update({
         where: { id: eventId },
@@ -172,9 +177,7 @@ export class EventService {
       return updated;
     });
 
-    // 4. Send push notification (after successful DB update)
-    const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
-
+    // Send approval notification
     if (fcmToken && isEventApproveNotify) {
       await this.notification.sendPushNotification(
         fcmToken,
@@ -185,7 +188,27 @@ export class EventService {
     }
 
     return updatedEvent;
+  } else if (isActiveOrReject === 'REJECT') {
+    // Reject: delete the outside event
+    await this.prisma.outsideEvent.delete({
+      where: { id: eventId },
+    });
+
+    // Optional: Send rejection notification
+    if (fcmToken && isEventApproveNotify) {
+      await this.notification.sendPushNotification(
+        fcmToken,
+        'Event Rejected ❌',
+        `Your outside event "${event.title}" was not approved and has been removed.`,
+        { status: 'rejected', eventId: event.id },
+      );
+    }
+
+    return { success: true, message: 'Event rejected and deleted' };
   }
+
+  throw new BadRequestException('Invalid isActiveOrReject value');
+}
 
   async getUserApprovedOutsideEventsWithSummary(userId: string) {
     // 1. Fetch all approved outside events for the user

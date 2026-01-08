@@ -1,4 +1,4 @@
-import { IsOptional, IsString, IsInt, IsDateString, Min } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsDateString, Min, IsIn } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class UpdateEventDto {
@@ -66,4 +66,16 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString({ message: 'Event type must be a string' })
   eventType?: string;
+}
+
+
+export class ApproveOutsideEventDto {
+  @ApiProperty({ example: 'eventafd' })
+  @IsString()
+  eventId: string;
+
+  @ApiProperty({ enum: ['APPROVE', 'REJECT'], example: 'APPROVE' })
+  @IsString()
+  @IsIn(['APPROVE', 'REJECT'])
+  isActiveOrReject: string;
 }
