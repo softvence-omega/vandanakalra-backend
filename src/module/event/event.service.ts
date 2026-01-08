@@ -6,7 +6,7 @@ import {
 } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
 import { CreateEventDto } from './dto/create-event.dto';
-import { ApproveOutsideEventDto, UpdateEventDto } from './dto/update-event.dto';
+import { ApproveOutsideEventDto, NotificationEventDto, UpdateEventDto } from './dto/update-event.dto';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
 import { NotificationService } from '../notification/notification.service';
 
@@ -297,6 +297,45 @@ async approveOutsideEvent(dto: ApproveOutsideEventDto) {
     return updatedEvent;
   }
 
+async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
+  // Optional: verify user exists
+  const user = await this.prisma.user.findUnique({
+    where: { id: userId },
+  });
+
+  if (!user) {
+    throw new NotFoundException('User not found');
+  }
+
+  // Build update payload dynamically — only include fields that are defined
+  const updateData: {
+    isEventApproveNotify?: boolean;
+    isNewEventNotify?: boolean;
+    isEventReminder?: boolean;
+  } = {};
+
+  if (dto.isEventApproveNotify !== undefined) {
+    updateData.isEventApproveNotify = dto.isEventApproveNotify;
+  }
+  if (dto.isNewEventNotify !== undefined) {
+    updateData.isNewEventNotify = dto.isNewEventNotify;
+  }
+  if (dto.isEventReminder !== undefined) {
+    updateData.isEventReminder = dto.isEventReminder;
+  }
+
+  // Only proceed if at least one field is provided
+  if (Object.keys(updateData).length === 0) {
+    throw new BadRequestException('No valid fields to update');
+  }
+
+  const updatedUser = await this.prisma.user.update({
+    where: { id: userId },
+    data: updateData,
+  });
+
+  return updatedUser;
+}
   async getEventById(eventId: string) {
     const event = await this.prisma.event.findUnique({
       where: { id: eventId },

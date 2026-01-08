@@ -1,6 +1,5 @@
-import { IsOptional, IsString, IsInt, IsDateString, Min, IsIn } from 'class-validator';
+import { IsOptional, IsString, IsInt, IsDateString, Min, IsIn, IsBoolean } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-
 export class UpdateEventDto {
   @ApiProperty({
     example: 'Mathematics Workshop',
@@ -66,8 +65,34 @@ export class UpdateEventDto {
   @IsOptional()
   @IsString({ message: 'Event type must be a string' })
   eventType?: string;
-}
 
+  @ApiProperty({
+    example: true,
+    description: 'Whether to notify when event is approved',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isEventApproveNotify must be a boolean' })
+  isEventApproveNotify?: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether to notify when a new event is created',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isNewEventNotify must be a boolean' })
+  isNewEventNotify?: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether to send event reminder notifications',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isEventReminder must be a boolean' })
+  isEventReminder?: boolean;
+}
 
 export class ApproveOutsideEventDto {
   @ApiProperty({ example: 'eventafd' })
@@ -79,3 +104,34 @@ export class ApproveOutsideEventDto {
   @IsIn(['APPROVE', 'REJECT'])
   isActiveOrReject: string;
 }
+
+
+export class NotificationEventDto {
+    @ApiProperty({
+    example: true,
+    description: 'Whether to notify when event is approved',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isEventApproveNotify must be a boolean' })
+  isEventApproveNotify?: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether to notify when a new event is created',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isNewEventNotify must be a boolean' })
+  isNewEventNotify?: boolean;
+
+  @ApiProperty({
+    example: true,
+    description: 'Whether to send event reminder notifications',
+    required: false,
+  })
+  @IsOptional()
+  @IsBoolean({ message: 'isEventReminder must be a boolean' })
+  isEventReminder?: boolean;
+}
+

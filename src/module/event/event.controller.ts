@@ -11,6 +11,7 @@ import {
   Res,
   Patch,
   NotFoundException,
+  UnauthorizedException,
 } from '@nestjs/common';
 import { EventService } from './event.service';
 import { CreateEventDto, UpdateEventDto } from './dto';
@@ -21,7 +22,10 @@ import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { userRole } from '@prisma/client';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
-import { ApproveOutsideEventDto } from './dto/update-event.dto';
+import {
+  ApproveOutsideEventDto,
+  NotificationEventDto,
+} from './dto/update-event.dto';
 
 @Controller('event')
 export class EventController {
@@ -124,7 +128,7 @@ export class EventController {
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
-      message: 'succefully approve or reject  oparation done ',
+      message: 'successfully  done  Oparation',
       data: result,
     });
   }
@@ -209,6 +213,26 @@ export class EventController {
     });
   }
 
+  @Put('update-notification-settings') // ← No eventId needed
+  @ApiBody({ type: NotificationEventDto })
+  @ApiResponse({ status: 200, description: 'Notification settings updated' })
+  async NotificationEventUpdate(
+    @Body() dto: NotificationEventDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const userId = (req as any).user?.id;
+  
+
+    const result = await this.eventService.NotificationEventUpdate(userId, dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Notification toggle updated',
+      data: result,
+    });
+  }
   // Get all events
   @Public()
   @Get()
@@ -269,7 +293,7 @@ export class EventController {
 
   @Get('upcoming')
   async getUpcomingEvents(@Req() req: Request, @Res() res: Response) {
-    const userId = req.user!.id
+    const userId = req.user!.id;
     const result = await this.eventService.getUpcomingEvents(userId);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
