@@ -11,6 +11,7 @@ import {
   Req,
   Res,
   UploadedFile,
+  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -41,12 +42,16 @@ import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';
 import { CloudinaryService } from 'src/common/services/cloudinary.service';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgetPasswordDto';
+import { S3Service } from '../s3/s3.service';
+import { imageFileFilter } from 'src/common/utils/multer.options';
+import { MulterExceptionFilter } from 'src/common/utils/multer-exception.filter';
 
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private readonly cloudinaryService: CloudinaryService,
+    private s3Service: S3Service, // ✅ Inject S3
   ) {}
 
   // refresh token
@@ -174,15 +179,19 @@ export class AuthController {
       data: result,
     });
   }
-
-  @Patch('update-profile')
   @UseInterceptors(
-    FileInterceptor('image', { storage: multer.memoryStorage() }),
+    FileInterceptor('image', {
+      storage: multer.memoryStorage(),
+      fileFilter: imageFileFilter,
+      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
+    }),
   )
-  @ApiConsumes('multipart/form-data') // 👈 tells Swagger to use multipart
+  @UseFilters(MulterExceptionFilter)
+  @Patch('update-profile')
+  @ApiConsumes('multipart/form-data')
   @ApiBody({
     description: 'Update user profile with optional image upload',
-    type: UpdateUserProfileDto, // 👈 use the new DTO here
+    type: UpdateUserProfileDto,
   })
   @ApiOperation({ summary: 'Update user profile (with optional image)' })
   @ApiResponse({
@@ -199,15 +208,19 @@ export class AuthController {
     let imageUrl: string | null = null;
 
     if (file) {
-      const result = await this.cloudinaryService.uploadImage(
-        file,
-        'profile-images',
-      );
-      imageUrl = result.secure_url; // This is valid now because imageUrl is typed as string | null
-      // You probably want to save this URL to the user record
+      try {
+        imageUrl = await this.s3Service.uploadFile(file, 'profile-images');
+      } catch (error) {
+        // S3Service already wraps errors, but you can log or customize here
+        return sendResponse(res, {
+          statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
+          success: false,
+          message: 'Image upload failed. Please try again.',
+          data: null,
+        });
+      }
     }
 
-    // Optional: update profile even if no image
     const updatedUser = await this.authService.updateProfile(
       userId,
       updateDto,
@@ -218,7 +231,7 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'Profile updated successfully',
-      data: { ...updatedUser },
+      data: updatedUser,
     });
   }
 

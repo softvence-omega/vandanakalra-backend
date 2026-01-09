@@ -13,6 +13,7 @@ import { NotificationModule } from './module/notification/notification.module';
 import { CloudinaryConfig } from './config/cloudinary.config';
 import { CloudinaryModule } from './module/cloudinary/cloudinary.module';
 import { ScheduleModule } from '@nestjs/schedule';
+import { S3Module } from './module/s3/s3.module';
 
 @Module({
   imports: [ MailerModule.forRootAsync({
@@ -32,7 +33,7 @@ import { ScheduleModule } from '@nestjs/schedule';
           from: config.get<string>('SMTP_FROM') || config.get<string>('SMTP_USER'),
         },
       }),
-    }),AuthModule, PrismaModule, MailModule, EventModule, EnrollementModule, NotificationModule, CloudinaryModule,],
+    }),AuthModule, PrismaModule, MailModule, EventModule, EnrollementModule, NotificationModule, CloudinaryModule, S3Module,],
   controllers: [AppController, ],
   providers: [AppService , SeederService ],
   exports:[]
