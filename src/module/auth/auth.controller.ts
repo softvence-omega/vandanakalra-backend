@@ -179,6 +179,7 @@ export class AuthController {
       data: result,
     });
   }
+  
   @UseInterceptors(
     FileInterceptor('image', {
       storage: multer.memoryStorage(),

@@ -1,4 +1,8 @@
-import { Injectable, InternalServerErrorException } from '@nestjs/common';
+import {
+  Injectable,
+  InternalServerErrorException,
+  Logger,
+} from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { S3Client, S3ClientConfig } from '@aws-sdk/client-s3';
 import { Upload } from '@aws-sdk/lib-storage';
@@ -7,6 +11,7 @@ import { v4 as uuidv4 } from 'uuid';
 @Injectable()
 export class S3Service {
   private s3Client: S3Client;
+  private readonly logger = new Logger(S3Service.name); // 👈 Use NestJS Logger
 
   constructor(private configService: ConfigService) {
     const awsRegion = this.configService.get<string>('AWS_REGION');
@@ -47,12 +52,18 @@ export class S3Service {
     }
 
     const key = `${folder}/${uuidv4()}.${fileExtension}`;
+    const bucket = this.configService.get<string>('AWS_S3_BUCKET');
+    const region = this.configService.get<string>('AWS_REGION');
+
+    this.logger.log(
+      `Attempting to upload file to S3: ${key} (bucket: ${bucket}, region: ${region})`,
+    );
 
     try {
       const parallelUpload = new Upload({
         client: this.s3Client,
         params: {
-          Bucket: this.configService.get<string>('AWS_S3_BUCKET')!, // safe due to validation above
+          Bucket: bucket!,
           Key: key,
           Body: file.buffer,
           ContentType: file.mimetype,
@@ -61,16 +72,29 @@ export class S3Service {
 
       await parallelUpload.done();
 
-      // Construct public URL
-      const url = `https://${this.configService.get<string>(
-        'AWS_S3_BUCKET',
-      )}.s3.${this.configService.get<string>('AWS_REGION')}.amazonaws.com/${key}`;
-
+      const url = `https://${bucket}.s3.${region}.amazonaws.com/${key}`;
+      this.logger.log(`File uploaded successfully. Public URL: ${url}`);
       return url;
     } catch (error) {
-      console.error('S3 Upload Error:', error);
+      // 🔥 Log the FULL error with type and message
+      this.logger.error(
+        `S3 upload failed for key "${key}"`,
+        {
+          errorName: error?.name,
+          errorMessage: error?.message,
+          errorStack: error?.stack,
+          bucket,
+          region,
+          fileSize: file.buffer.length,
+          fileType: file.mimetype,
+          originalName: file.originalname,
+        },
+        'S3Service.uploadFile',
+      );
+
+      // Re-throw so controller can handle it
       throw new InternalServerErrorException(
-        'Failed to upload image to S3. Please try again.',
+        'Failed to upload image to cloud storage. Please try again.',
       );
     }
   }
