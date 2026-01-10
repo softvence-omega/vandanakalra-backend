@@ -24,8 +24,8 @@ export class LoginDto {
   role: string;
 
   @ApiProperty({
-    example: '1234',
-    description: 'User password (min 4 characters)',
+    example: '123456',
+    description: 'User password (min 6 characters)',
   })
   @IsNotEmpty({ message: 'Password is required!' })
   password: string;

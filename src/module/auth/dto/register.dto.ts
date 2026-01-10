@@ -46,11 +46,10 @@ export class RegisterDto {
   fcmToken: string;
 
   @ApiProperty({
-    example: '1234',
+    example: '123456',
     description: 'User password (min 6 characters)',
   })
   @IsNotEmpty({ message: 'Password is required!' })
   @IsString({ message: 'Password must be a string' })
-  @MinLength(4, { message: 'Password must be at least 4 characters' })
   password: string;
 }
