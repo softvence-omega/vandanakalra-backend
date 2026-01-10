@@ -22,10 +22,10 @@ export class EventReminderService {
     const now = new Date();
     // Target: events starting between 23h and 25h from now (24h ±1h tolerance)
     const startWindow = new Date(now.getTime() + 23 * 60 * 60 * 1000); // +23h
-    const endWindow = new Date(now.getTime() + 25 * 60 * 60 * 1000);   // +25h
+    const endWindow = new Date(now.getTime() + 25 * 60 * 60 * 1000); // +25h
 
     // Find events in the 24h±1h window
-    const upcomingEvents = await this.prisma.event.findMany({
+    const upcomingEvents = await this.prisma.client.event.findMany({
       where: {
         date: {
           gte: startWindow,
@@ -56,7 +56,9 @@ export class EventReminderService {
       return;
     }
 
-    this.logger.log(`📬 Found ${upcomingEvents.length} event(s) for reminders.`);
+    this.logger.log(
+      `📬 Found ${upcomingEvents.length} event(s) for reminders.`,
+    );
 
     for (const event of upcomingEvents) {
       const eventDateTime = new Date(event.date);
@@ -93,7 +95,7 @@ export class EventReminderService {
           fcmTokens,
           '⏰ Event Reminder',
           `Your event "${event.title}" starts tomorrow at ${event.time}! Don’t miss it.`,
-           {
+          {
             eventType: 'event_reminder',
             eventId: event.id,
           },
@@ -101,13 +103,12 @@ export class EventReminderService {
 
       // Optional: clean up failed tokens
       if (failedTokens.length > 0) {
-        await this.prisma.user.updateMany({
+        await this.prisma.client.user.updateMany({
           where: { fcmToken: { in: failedTokens } },
           data: { fcmToken: null },
         });
         this.logger.log(`🧹 Cleaned ${failedTokens.length} invalid FCM tokens`);
       }
-
     }
   }
 }

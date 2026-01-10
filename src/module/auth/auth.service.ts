@@ -12,9 +12,9 @@ import { JwtService } from '@nestjs/jwt';
 import { LoginDto } from './dto/login.dto';
 import { getTokens } from './auth.utils';
 import { MailerService } from '@nestjs-modules/mailer';
-// import { SystemRole } from '@prisma/client';
+// import { SystemRole } from '@prisma';
 import { RegisterDto } from './dto/register.dto';
-import { userRole } from '@prisma/client';
+// import { userRole } from '@prisma';
 import {
   AccountActiveDto,
   ChangePasswordDto,
@@ -33,7 +33,7 @@ export class AuthService {
   ) {}
 
   async register(dto: RegisterDto) {
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.client.user.findUnique({
       where: { username: dto.username },
     });
 
@@ -46,7 +46,7 @@ export class AuthService {
       parseInt(process.env.SALT_ROUND!, 10),
     );
 
-    const newUser = await this.prisma.user.create({
+    const newUser = await this.prisma.client.user.create({
       data: {
         firstname: dto.firstName,
         lastname: dto.lastName,
@@ -57,7 +57,7 @@ export class AuthService {
     });
 
     // 🔔 Notify all active admins about new registration
-    const adminUsers = await this.prisma.user.findMany({
+    const adminUsers = await this.prisma.client.user.findMany({
       where: {
         role: 'ADMIN', // or userRole.ADMIN if using enum
         isActive: true,
@@ -94,7 +94,7 @@ export class AuthService {
 
   // login
   async login(dto: LoginDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { username: dto.username },
     });
 
@@ -115,7 +115,7 @@ export class AuthService {
       throw new ForbiddenException('Invalid credentials');
     }
 
-    const updateToken = await this.prisma.user.update({
+    const updateToken = await this.prisma.client.user.update({
       where: { username: dto.username },
       data: { fcmToken: dto.fcmToken },
     });
@@ -132,7 +132,7 @@ export class AuthService {
   }
 
   async active_account(dto: AccountActiveDto) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: dto.userId },
     });
 
@@ -147,7 +147,7 @@ export class AuthService {
         return { updateUser: { ...user, isDeleted: true } };
       }
 
-      const updateUser = await this.prisma.user.update({
+      const updateUser = await this.prisma.client.user.update({
         where: { id: dto.userId },
         data: {
           isDeleted: true,
@@ -184,7 +184,7 @@ export class AuthService {
       throw new BadRequestException('Cannot approve a deleted user!');
     }
 
-    const updateUser = await this.prisma.user.update({
+    const updateUser = await this.prisma.client.user.update({
       where: { id: dto.userId },
       data: {
         isActive: true,
@@ -213,7 +213,7 @@ export class AuthService {
 
   // change password
   async changePassword(id: string, dto: ChangePasswordDto) {
-    const user = await this.prisma.user.findUnique({ where: { id } });
+    const user = await this.prisma.client.user.findUnique({ where: { id } });
     if (!user || !user.password) {
       throw new NotFoundException('User not found');
     }
@@ -229,7 +229,7 @@ export class AuthService {
       dto.newPassword,
       parseInt(process.env.SALT_ROUND!),
     );
-    await this.prisma.user.update({
+    await this.prisma.client.user.update({
       where: { id },
       data: { password: hashed },
     });
@@ -243,7 +243,7 @@ export class AuthService {
         secret: process.env.REFRESH_TOKEN_SECRET,
       });
 
-      const user = await this.prisma.user.findUnique({
+      const user = await this.prisma.client.user.findUnique({
         where: { username: payload.username },
       });
       if (!user) throw new UnauthorizedException('Invalid refresh token');
@@ -270,7 +270,7 @@ export class AuthService {
     imageUrl?: string | null,
   ) {
     // Optional: Validate that user exists
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
 
@@ -279,7 +279,7 @@ export class AuthService {
     }
 
     // Update only provided fields
-    const updatedUser = await this.prisma.user.update({
+    const updatedUser = await this.prisma.client.user.update({
       where: { id: userId },
       data: {
         ...(dto.firstname !== undefined && { firstname: dto.firstname }),
@@ -296,7 +296,7 @@ export class AuthService {
 
   async createAttendance(userId: string) {
     // 1. Validate user exists
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
@@ -330,7 +330,7 @@ export class AuthService {
     );
 
     // 3. Check if attendance already exists for this user today
-    const existingAttendance = await this.prisma.attendence.findFirst({
+    const existingAttendance = await this.prisma.client.attendence.findFirst({
       where: {
         userId,
         createdAt: {
@@ -345,7 +345,7 @@ export class AuthService {
     }
 
     // 4. Create new attendance
-    const attendance = await this.prisma.attendence.create({
+    const attendance = await this.prisma.client.attendence.create({
       data: {
         userId,
       },
@@ -367,7 +367,7 @@ export class AuthService {
     const endOfDay = new Date(parsedDate);
     endOfDay.setUTCHours(23, 59, 59, 999);
 
-    const attendances = await this.prisma.attendence.findMany({
+    const attendances = await this.prisma.client.attendence.findMany({
       where: {
         createdAt: {
           gte: startOfDay,
@@ -393,7 +393,7 @@ export class AuthService {
   }
 
   async forgotPassword(username: string, fcmToken: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { username },
     });
 
@@ -406,7 +406,7 @@ export class AuthService {
     const resetToken = Math.floor(1000 + Math.random() * 9000).toString(); // e.g. "4829"
     const resetExpires = new Date(Date.now() + 10 * 60 * 1000); // 10 minutes
 
-    const userUpdate = await this.prisma.user.update({
+    const userUpdate = await this.prisma.client.user.update({
       where: { id: user.id },
       data: {
         resetPasswordToken: resetToken,
@@ -426,7 +426,7 @@ export class AuthService {
   }
 
   async resetPassword(token: string, newPassword: string) {
-    const user = await this.prisma.user.findFirst({
+    const user = await this.prisma.client.user.findFirst({
       where: {
         resetPasswordToken: token,
         resetPasswordExpires: {
@@ -441,7 +441,7 @@ export class AuthService {
 
     const hashedPassword = await bcrypt.hash(newPassword, 10);
 
-    const updateUser = await this.prisma.user.update({
+    const updateUser = await this.prisma.client.user.update({
       where: { id: user.id },
       data: {
         password: hashedPassword,
@@ -454,7 +454,7 @@ export class AuthService {
   }
 
   async getUserProfile(userId: string) {
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
 
@@ -466,7 +466,7 @@ export class AuthService {
   }
 
   async getUsers() {
-    const user = await this.prisma.user.findMany({
+    const user = await this.prisma.client.user.findMany({
       where: { isDeleted: false },
       orderBy: {
         point: 'desc', // 👈 descending order (highest to lowest)
@@ -477,7 +477,7 @@ export class AuthService {
   }
 
   async getNotActiveteUser() {
-    const user = await this.prisma.user.findMany({
+    const user = await this.prisma.client.user.findMany({
       where: { isDeleted: false, isActive: false },
       orderBy: {
         createdAt: 'desc', // 👈 descending order (highest to lowest)
@@ -488,7 +488,7 @@ export class AuthService {
   }
 
   async getTopFiveUserByPoint() {
-    const users = await this.prisma.user.findMany({
+    const users = await this.prisma.client.user.findMany({
       where: { isDeleted: false },
       orderBy: {
         point: 'desc',

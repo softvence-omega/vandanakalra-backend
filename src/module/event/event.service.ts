@@ -25,7 +25,7 @@ export class EventService {
 
   async createEvent(createEventDto: CreateEventDto, userId?: string) {
     // 1. Create the event
-    const event = await this.prisma.event.create({
+    const event = await this.prisma.client.event.create({
       data: {
         title: createEventDto.title,
         description: createEventDto.description,
@@ -39,7 +39,7 @@ export class EventService {
     });
 
     // 2. Check if ANY active admin has adminCreateEventNotify enabled
-    const adminWithNotifyEnabled = await this.prisma.user.findFirst({
+    const adminWithNotifyEnabled = await this.prisma.client.user.findFirst({
       where: {
         role: 'ADMIN', // or userRole.ADMIN if it's an enum
         isActive: true,
@@ -50,7 +50,7 @@ export class EventService {
 
     // 3. Only send notifications if enabled by admin settings
     if (adminWithNotifyEnabled) {
-      const users = await this.prisma.user.findMany({
+      const users = await this.prisma.client.user.findMany({
         where: {
           isNewEventNotify: true,
           isActive: true,
@@ -79,7 +79,7 @@ export class EventService {
 
   async createOutsideEvent(dto: CreateOutsideEventDto, userId?: string) {
     // 1. Check if any active admin allows custom (outside) events
-    const adminAllowingCustom = await this.prisma.user.findFirst({
+    const adminAllowingCustom = await this.prisma.client.user.findFirst({
       where: {
         role: 'ADMIN', // or userRole.ADMIN if using enum
         isActive: true,
@@ -96,7 +96,9 @@ export class EventService {
 
     // 2. Validate user if provided
     if (userId) {
-      const user = await this.prisma.user.findUnique({ where: { id: userId } });
+      const user = await this.prisma.client.user.findUnique({
+        where: { id: userId },
+      });
       if (!user) {
         throw new NotFoundException('User not found');
       }
@@ -115,7 +117,7 @@ export class EventService {
     }
 
     // 4. Create the outside event
-    return this.prisma.outsideEvent.create({
+    return this.prisma.client.outsideEvent.create({
       data: {
         title: dto.title,
         description: dto.description,
@@ -126,7 +128,7 @@ export class EventService {
     });
   }
   async getUnapprovedOutsideEvents() {
-    return this.prisma.outsideEvent.findMany({
+    return this.prisma.client.outsideEvent.findMany({
       where: {
         approved: false,
       },
@@ -143,7 +145,7 @@ export class EventService {
     const { eventId, isActiveOrReject } = dto;
 
     // 1. Fetch the outside event with user (including fcmToken)
-    const event = await this.prisma.outsideEvent.findUnique({
+    const event = await this.prisma.client.outsideEvent.findUnique({
       where: { id: eventId },
       include: {
         user: {
@@ -182,7 +184,7 @@ export class EventService {
       const endOfDay = new Date(eventDate);
       endOfDay.setUTCHours(23, 59, 59, 999);
 
-      const attendance = await this.prisma.attendence.findFirst({
+      const attendance = await this.prisma.client.attendence.findFirst({
         where: {
           userId: event.userId,
           attendence: 'PRESENT',
@@ -200,7 +202,7 @@ export class EventService {
       }
 
       // Perform approval: update event + add points
-      const updatedEvent = await this.prisma.$transaction(async (tx) => {
+      const updatedEvent = await this.prisma.client.$transaction(async (tx) => {
         const updated = await tx.outsideEvent.update({
           where: { id: eventId },
           data: { approved: true },
@@ -229,7 +231,7 @@ export class EventService {
       return updatedEvent;
     } else if (isActiveOrReject === 'REJECT') {
       // Reject: delete the outside event
-      await this.prisma.outsideEvent.delete({
+      await this.prisma.client.outsideEvent.delete({
         where: { id: eventId },
       });
 
@@ -251,7 +253,7 @@ export class EventService {
 
   async getUserApprovedOutsideEventsWithSummary(userId: string) {
     // 1. Fetch all approved outside events for the user
-    const approvedEvents = await this.prisma.outsideEvent.findMany({
+    const approvedEvents = await this.prisma.client.outsideEvent.findMany({
       where: {
         userId,
         approved: true,
@@ -277,7 +279,7 @@ export class EventService {
 
   async deleteUnapprovedOutsideEvent(eventId: string) {
     // Find the event with approval status
-    const event = await this.prisma.outsideEvent.findUnique({
+    const event = await this.prisma.client.outsideEvent.findUnique({
       where: { id: eventId },
     });
 
@@ -290,7 +292,7 @@ export class EventService {
     }
 
     // Delete the unapproved event
-    await this.prisma.outsideEvent.delete({
+    await this.prisma.client.outsideEvent.delete({
       where: { id: eventId },
     });
 
@@ -301,7 +303,7 @@ export class EventService {
 
   async updateEvent(eventId: string, updateEventDto: UpdateEventDto) {
     // Check if event exists
-    const event = await this.prisma.event.findUnique({
+    const event = await this.prisma.client.event.findUnique({
       where: { id: eventId },
     });
 
@@ -328,7 +330,7 @@ export class EventService {
       updateData.eventType = updateEventDto.eventType;
 
     // Update event
-    const updatedEvent = await this.prisma.event.update({
+    const updatedEvent = await this.prisma.client.event.update({
       where: { id: eventId },
       data: updateData,
     });
@@ -338,7 +340,7 @@ export class EventService {
 
   async NotificationEventUpdate(userId: string, dto: NotificationEventDto) {
     // Optional: verify user exists
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
 
@@ -368,7 +370,7 @@ export class EventService {
       throw new BadRequestException('No valid fields to update');
     }
 
-    const updatedUser = await this.prisma.user.update({
+    const updatedUser = await this.prisma.client.user.update({
       where: { id: userId },
       data: updateData,
     });
@@ -376,7 +378,7 @@ export class EventService {
     return updatedUser;
   }
   async getEventById(eventId: string) {
-    const event = await this.prisma.event.findUnique({
+    const event = await this.prisma.client.event.findUnique({
       where: { id: eventId },
       include: {
         enrolled: true,
@@ -391,7 +393,7 @@ export class EventService {
   }
 
   async getAllEvents() {
-    const events = await this.prisma.event.findMany({
+    const events = await this.prisma.client.event.findMany({
       include: {
         enrolled: true,
       },
@@ -408,7 +410,7 @@ export class EventService {
       now.getMonth(),
       now.getDate(),
     );
-    const upcomingEvents = await this.prisma.event.findMany({
+    const upcomingEvents = await this.prisma.client.event.findMany({
       where: {
         date: {
           gte: startOfToday,
@@ -450,7 +452,7 @@ export class EventService {
 
   async getAttendedEventsWithStats(userId: string) {
     // Check if user exists
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
@@ -458,7 +460,7 @@ export class EventService {
     }
 
     // Fetch attended enrollments with event data
-    const attendedEnrollments = await this.prisma.enrolled.findMany({
+    const attendedEnrollments = await this.prisma.client.enrolled.findMany({
       where: {
         userId,
         status: 'ATTENDED',
@@ -483,7 +485,7 @@ export class EventService {
 
   async getJoinEventsWithStats(userId: string) {
     // Check if user exists
-    const user = await this.prisma.user.findUnique({
+    const user = await this.prisma.client.user.findUnique({
       where: { id: userId },
     });
     if (!user) {
@@ -491,7 +493,7 @@ export class EventService {
     }
 
     // Fetch attended enrollments with event data
-    const joinEnrollments = await this.prisma.enrolled.findMany({
+    const joinEnrollments = await this.prisma.client.enrolled.findMany({
       where: {
         userId,
         status: 'JOIN',
@@ -509,7 +511,7 @@ export class EventService {
     };
   }
   async deleteEvent(eventId: string, userId?: string) {
-    const event = await this.prisma.event.findUnique({
+    const event = await this.prisma.client.event.findUnique({
       where: { id: eventId },
     });
 
@@ -517,115 +519,110 @@ export class EventService {
       throw new NotFoundException('Event not found');
     }
 
-    const deletedEvent = await this.prisma.event.delete({
+    const deletedEvent = await this.prisma.client.event.delete({
       where: { id: eventId },
     });
 
     return deletedEvent;
   }
 
-
   // user.service.ts (or setting.service.ts)
 
-async getAdminSettings(userId :string) {
-  // Find any active, non-deleted admin (settings are global, so one is enough)
-  const admin = await this.prisma.user.findFirst({
-    where: {
-      id:userId
-    },
-    select: {
-      adminAutoApprovePoint: true,
-      adminAllowCustomPoint: true,
-      adminCreateEventNotify: true,
-      adminEventReminders: true,
-    },
-  });
+  async getAdminSettings(userId: string) {
+    // Find any active, non-deleted admin (settings are global, so one is enough)
+    const admin = await this.prisma.client.user.findFirst({
+      where: {
+        id: userId,
+      },
+      select: {
+        adminAutoApprovePoint: true,
+        adminAllowCustomPoint: true,
+        adminCreateEventNotify: true,
+        adminEventReminders: true,
+      },
+    });
 
-  // Fallback to defaults if no admin exists (optional but safe)
-  return {
-    adminAutoApprovePoint: admin?.adminAutoApprovePoint ?? true,
-    adminAllowCustomPoint: admin?.adminAllowCustomPoint ?? true,
-    adminCreateEventNotify: admin?.adminCreateEventNotify ?? true,
-    adminEventReminders: admin?.adminEventReminders ?? true,
-  };
-}
-
-async getUserNotificationSettings(userId: string) {
-  const user = await this.prisma.user.findUnique({
-    where: { id: userId },
-    select: {
-      isEventApproveNotify: true,
-      isNewEventNotify: true,
-      isEventReminder: true,
-    },
-  });
-
-  if (!user) {
-    throw new NotFoundException('User not found');
+    // Fallback to defaults if no admin exists (optional but safe)
+    return {
+      adminAutoApprovePoint: admin?.adminAutoApprovePoint ?? true,
+      adminAllowCustomPoint: admin?.adminAllowCustomPoint ?? true,
+      adminCreateEventNotify: admin?.adminCreateEventNotify ?? true,
+      adminEventReminders: admin?.adminEventReminders ?? true,
+    };
   }
 
-  return user;
-}
+  async getUserNotificationSettings(userId: string) {
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+      select: {
+        isEventApproveNotify: true,
+        isNewEventNotify: true,
+        isEventReminder: true,
+      },
+    });
 
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
 
-async updateAdminSettings(dto: UpdateAdminSettingsDto , userId:string) {
-  // Find an active, non-deleted admin to update
-  const admin = await this.prisma.user.findFirst({
-    where: {
-      id:userId
-    },
-    select: { id: true },
-  });
-
-  if (!admin) {
-    throw new NotFoundException('No active admin found to update settings');
+    return user;
   }
 
-  // Build update payload: only include fields that are defined
-  const updateData: {
-    adminAutoApprovePoint?: boolean;
-    adminAllowCustomPoint?: boolean;
-    adminCreateEventNotify?: boolean;
-    adminEventReminders?: boolean;
-  } = {};
+  async updateAdminSettings(dto: UpdateAdminSettingsDto, userId: string) {
+    // Find an active, non-deleted admin to update
+    const admin = await this.prisma.client.user.findFirst({
+      where: {
+        id: userId,
+      },
+      select: { id: true },
+    });
 
-  if (dto.adminAutoApprovePoint !== undefined) {
-    updateData.adminAutoApprovePoint = dto.adminAutoApprovePoint;
+    if (!admin) {
+      throw new NotFoundException('No active admin found to update settings');
+    }
+
+    // Build update payload: only include fields that are defined
+    const updateData: {
+      adminAutoApprovePoint?: boolean;
+      adminAllowCustomPoint?: boolean;
+      adminCreateEventNotify?: boolean;
+      adminEventReminders?: boolean;
+    } = {};
+
+    if (dto.adminAutoApprovePoint !== undefined) {
+      updateData.adminAutoApprovePoint = dto.adminAutoApprovePoint;
+    }
+    if (dto.adminAllowCustomPoint !== undefined) {
+      updateData.adminAllowCustomPoint = dto.adminAllowCustomPoint;
+    }
+    if (dto.adminCreateEventNotify !== undefined) {
+      updateData.adminCreateEventNotify = dto.adminCreateEventNotify;
+    }
+    if (dto.adminEventReminders !== undefined) {
+      updateData.adminEventReminders = dto.adminEventReminders;
+    }
+
+    if (Object.keys(updateData).length === 0) {
+      throw new BadRequestException('No valid fields provided for update');
+    }
+
+    // Update the admin user
+    await this.prisma.client.user.update({
+      where: { id: admin.id },
+      data: updateData,
+    });
+
+    // Return the updated values (for confirmation)
+    const updatedAdmin = await this.prisma.client.user.findUnique({
+      where: { id: admin.id },
+      select: {
+        adminAutoApprovePoint: true,
+        adminAllowCustomPoint: true,
+        adminCreateEventNotify: true,
+        adminEventReminders: true,
+      },
+    });
+
+    return updatedAdmin as UpdateAdminSettingsDto;
   }
-  if (dto.adminAllowCustomPoint !== undefined) {
-    updateData.adminAllowCustomPoint = dto.adminAllowCustomPoint;
-  }
-  if (dto.adminCreateEventNotify !== undefined) {
-    updateData.adminCreateEventNotify = dto.adminCreateEventNotify;
-  }
-  if (dto.adminEventReminders !== undefined) {
-    updateData.adminEventReminders = dto.adminEventReminders;
-  }
-
-  if (Object.keys(updateData).length === 0) {
-    throw new BadRequestException('No valid fields provided for update');
-  }
-
-  // Update the admin user
-  await this.prisma.user.update({
-    where: { id: admin.id },
-     data: updateData,
-  });
-
-  // Return the updated values (for confirmation)
-  const updatedAdmin = await this.prisma.user.findUnique({
-    where: { id: admin.id },
-    select: {
-      adminAutoApprovePoint: true,
-      adminAllowCustomPoint: true,
-      adminCreateEventNotify: true,
-      adminEventReminders: true,
-    },
-  });
-
-  return updatedAdmin as UpdateAdminSettingsDto;
-}
-
-
-
 }

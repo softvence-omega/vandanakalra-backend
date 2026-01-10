@@ -5,51 +5,35 @@ import {
   HttpException,
   Logger,
 } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import * as admin from 'firebase-admin';
-import * as fs from 'fs';
-import * as path from 'path';
 
 @Injectable()
 export class NotificationService implements OnModuleInit {
-    private readonly logger = new Logger(NotificationService.name);
+  private readonly logger = new Logger(NotificationService.name);
+
+  constructor(private readonly configService: ConfigService) {}
 
   onModuleInit() {
     if (!admin.apps.length) {
-      let serviceAccount;
-
-      // Try to load from environment variable first (production)
-      const serviceAccountEnv = process.env.FIREBASE_SERVICE_ACCOUNT;
-      if (serviceAccountEnv) {
-        try {
-          serviceAccount = JSON.parse(serviceAccountEnv);
-        } catch (e) {
-          throw new Error(
-            'Invalid FIREBASE_SERVICE_ACCOUNT environment variable. Must be valid JSON.',
-          );
-        }
-      } else {
-        // Fallback to local file (development only)
-        const fs = require('fs');
-        const path = require('path');
-        const serviceAccountPath = path.join(
-          process.cwd(),
-          'firebase-service-account.json',
-        );
-
-        if (!fs.existsSync(serviceAccountPath)) {
-          throw new Error(
-            'Firebase service account not found. Either set FIREBASE_SERVICE_ACCOUNT env var or provide firebase-service-account.json in the project root.',
-          );
-        }
-
-        serviceAccount = JSON.parse(
-          fs.readFileSync(serviceAccountPath, 'utf8'),
-        );
-      }
-
       admin.initializeApp({
-        credential: admin.credential.cert(serviceAccount),
+        credential: admin.credential.cert({
+          projectId: this.configService.getOrThrow<string>(
+            'FIREBASE_PROJECT_ID',
+          ),
+          clientEmail: this.configService.getOrThrow<string>(
+            'FIREBASE_CLIENT_EMAIL',
+          ),
+          privateKey: this.configService
+            .getOrThrow<string>('FIREBASE_PRIVATE_KEY')
+            ?.replace(/\\n/g, '\n'),
+        } as admin.ServiceAccount),
+        projectId: this.configService.getOrThrow<string>('FIREBASE_PROJECT_ID'),
       });
+
+      this.logger.log('Firebase initialized');
+    } else {
+      this.logger.log('Firebase already initialized');
     }
   }
 
@@ -124,7 +108,7 @@ export class NotificationService implements OnModuleInit {
     }
   }
 
-    // --- 🔥 NEW: Bulk notification (reusable) ---
+  // --- 🔥 NEW: Bulk notification (reusable) ---
   async sendBulkPushNotification(
     fcmTokens: string[],
     title: string,
@@ -160,7 +144,9 @@ export class NotificationService implements OnModuleInit {
       });
 
       const successCount = validTokens.length - failedTokens.length;
-      this.logger.log(`✅ Bulk notification: ${successCount}/${validTokens.length} sent`);
+      this.logger.log(
+        `✅ Bulk notification: ${successCount}/${validTokens.length} sent`,
+      );
 
       return { successCount, failedTokens };
     } catch (error) {

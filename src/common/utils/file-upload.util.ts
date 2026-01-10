@@ -21,7 +21,10 @@ export const fileFilter = (
 ) => {
   if (!file.mimetype.match(/\/(jpg|jpeg|png|gif)$/)) {
     return cb(
-      new HttpException('Only image files are allowed!', HttpStatus.BAD_REQUEST),
+      new HttpException(
+        'Only image files are allowed!',
+        HttpStatus.BAD_REQUEST,
+      ),
       false,
     );
   }

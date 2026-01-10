@@ -20,7 +20,7 @@ import type { Request, Response } from 'express';
 import { ApiBody, ApiOperation, ApiParam, ApiResponse } from '@nestjs/swagger';
 import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { userRole } from '@prisma/client';
+import { userRole } from '@prisma';
 import { CreateOutsideEventDto } from './dto/create-outside.dto';
 import {
   ApproveOutsideEventDto,
@@ -305,7 +305,7 @@ export class EventController {
   }
 
   @Get('getUserSettings')
-    @Roles(userRole.USER)
+  @Roles(userRole.USER)
   async getUserNotificationSettings(@Req() req: Request, @Res() res: Response) {
     const userId = req.user!.id;
     const result = await this.eventService.getUserNotificationSettings(userId);
@@ -316,7 +316,7 @@ export class EventController {
       data: result,
     });
   }
-  
+
   @Get('getAdminSettings')
   @Roles(userRole.ADMIN)
   async getAdminSettings(@Req() req: Request, @Res() res: Response) {
@@ -332,9 +332,13 @@ export class EventController {
 
   @Put('updateAdminSettings')
   @Roles(userRole.ADMIN)
-  async updateAdminSettings(@Body() dto : UpdateAdminSettingsDto , @Req() req: Request, @Res() res: Response) {
+  async updateAdminSettings(
+    @Body() dto: UpdateAdminSettingsDto,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
     const userId = req.user!.id;
-    const result = await this.eventService.updateAdminSettings(dto , userId);
+    const result = await this.eventService.updateAdminSettings(dto, userId);
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
@@ -342,8 +346,6 @@ export class EventController {
       data: result,
     });
   }
-
-  
 
   // Get event by ID
   @Public()

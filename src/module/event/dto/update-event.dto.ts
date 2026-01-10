@@ -1,4 +1,12 @@
-import { IsOptional, IsString, IsInt, IsDateString, Min, IsIn, IsBoolean } from 'class-validator';
+import {
+  IsOptional,
+  IsString,
+  IsInt,
+  IsDateString,
+  Min,
+  IsIn,
+  IsBoolean,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 export class UpdateEventDto {
   @ApiProperty({
@@ -105,9 +113,8 @@ export class ApproveOutsideEventDto {
   isActiveOrReject: string;
 }
 
-
 export class NotificationEventDto {
-    @ApiProperty({
+  @ApiProperty({
     example: true,
     description: 'Whether to notify when event is approved',
     required: false,
@@ -135,43 +142,68 @@ export class NotificationEventDto {
   isEventReminder?: boolean;
 }
 
-
-
 export class UpdateAdminSettingsDto {
-  @ApiProperty({ example: true, required: false, description: 'Auto-approve claimed points' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Auto-approve claimed points',
+  })
   @IsOptional()
   @IsBoolean()
   adminAutoApprovePoint?: boolean;
 
-  @ApiProperty({ example: false, required: false, description: 'Allow users to create custom/outside events' })
+  @ApiProperty({
+    example: false,
+    required: false,
+    description: 'Allow users to create custom/outside events',
+  })
   @IsOptional()
   @IsBoolean()
   adminAllowCustomPoint?: boolean;
 
-  @ApiProperty({ example: true, required: false, description: 'Send notification when a new event is created' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Send notification when a new event is created',
+  })
   @IsOptional()
   @IsBoolean()
   adminCreateEventNotify?: boolean;
 
-  @ApiProperty({ example: false, required: false, description: 'Enable event reminder notifications' })
+  @ApiProperty({
+    example: false,
+    required: false,
+    description: 'Enable event reminder notifications',
+  })
   @IsOptional()
   @IsBoolean()
   adminEventReminders?: boolean;
 }
 
-
 export class UpdateUserNotificationSettingsDto {
-  @ApiProperty({ example: true, required: false, description: 'Notify when event claim is approved' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Notify when event claim is approved',
+  })
   @IsOptional()
   @IsBoolean()
   isEventApproveNotify?: boolean;
 
-  @ApiProperty({ example: true, required: false, description: 'Notify when a new event is created' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Notify when a new event is created',
+  })
   @IsOptional()
   @IsBoolean()
   isNewEventNotify?: boolean;
 
-  @ApiProperty({ example: true, required: false, description: 'Send event reminder notifications' })
+  @ApiProperty({
+    example: true,
+    required: false,
+    description: 'Send event reminder notifications',
+  })
   @IsOptional()
   @IsBoolean()
   isEventReminder?: boolean;

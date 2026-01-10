@@ -34,7 +34,7 @@ export class JwtGuard extends AuthGuard('jwt') implements CanActivate {
     const user = request.user;
 
     // Check if user is active
-    const existingUser = await this.prisma.user.findUnique({
+    const existingUser = await this.prisma.client.user.findUnique({
       where: { id: user.id },
     });
 
@@ -44,8 +44,6 @@ export class JwtGuard extends AuthGuard('jwt') implements CanActivate {
     if (!existingUser.isActive) {
       throw new ForbiddenException('Your account is not Active yet!');
     }
-  
-   
 
     return true;
   }

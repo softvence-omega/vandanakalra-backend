@@ -14,14 +14,11 @@ import {
 } from '@nestjs/common';
 import type { Request, Response } from 'express';
 import { EnrollementService } from './enrollement.service';
-import {
-  ClaimPointsDto,
-  UpdateEnrollmentStatusDto,
-} from './dto';
+import { ClaimPointsDto, UpdateEnrollmentStatusDto } from './dto';
 import sendResponse from 'src/module/utils/sendResponse';
 import { Public } from 'src/common/decorators/public.decorators';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { userRole } from '@prisma/client';
+import { userRole } from '@prisma';
 import { ApiParam, ApiResponse } from '@nestjs/swagger';
 import { NotificationService } from '../notification/notification.service';
 
@@ -59,11 +56,13 @@ export class EnrollementController {
   async updateEnrollmentStatus(
     @Req() req: Request,
     @Res() res: Response,
-    @Body() body: UpdateEnrollmentStatusDto ,
+    @Body() body: UpdateEnrollmentStatusDto,
     @Param('enrollmentId') enrollmentId: string,
   ) {
-    const result =
-      await this.enrollmentService.updateEnrollmentStatus(enrollmentId , body);
+    const result = await this.enrollmentService.updateEnrollmentStatus(
+      enrollmentId,
+      body,
+    );
     return sendResponse(res, {
       statusCode: HttpStatus.OK,
       success: true,
@@ -109,8 +108,6 @@ export class EnrollementController {
       data,
     });
   }
-
-  
 
   // @Public()
   // @Get('me/join')

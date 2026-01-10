@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsString, IsInt, IsOptional, IsDateString, Min } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsString,
+  IsInt,
+  IsOptional,
+  IsDateString,
+  Min,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class CreateEventDto {

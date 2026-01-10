@@ -1,6 +1,6 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { IsString, IsUUID, IsEnum } from 'class-validator';
-import { AttendanceStatus } from '@prisma/client';
+import { AttendanceStatus } from '@prisma';
 
 export class CreateAttendanceDto {
   @ApiProperty({

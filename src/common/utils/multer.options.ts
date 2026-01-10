@@ -2,15 +2,25 @@
 import { diskStorage } from 'multer';
 import { HttpException, HttpStatus } from '@nestjs/common';
 
-export const imageFileFilter = (req: Express.Request, file: Express.Multer.File, callback: Function) => {
+export const imageFileFilter = (
+  req: Express.Request,
+  file: Express.Multer.File,
+  callback: Function,
+) => {
   if (!file) {
-    return callback(new HttpException('File is required', HttpStatus.BAD_REQUEST), false);
+    return callback(
+      new HttpException('File is required', HttpStatus.BAD_REQUEST),
+      false,
+    );
   }
 
   const allowedMimeTypes = ['image/jpeg', 'image/png', 'image/jpg'];
   if (!allowedMimeTypes.includes(file.mimetype)) {
     return callback(
-      new HttpException('Only JPEG and PNG images are allowed', HttpStatus.BAD_REQUEST),
+      new HttpException(
+        'Only JPEG and PNG images are allowed',
+        HttpStatus.BAD_REQUEST,
+      ),
       false,
     );
   }

@@ -6,5 +6,4 @@ export class CreateEnrollementDto {
   @IsNotEmpty({ message: 'Event id is required' })
   @IsString()
   eventId: string;
-
 }

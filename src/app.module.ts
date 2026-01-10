@@ -10,14 +10,30 @@ import { SeederService } from './seeder/seeder.service';
 import { EventModule } from './module/event/event.module';
 import { EnrollementModule } from './module/enrollement/enrollement.module';
 import { NotificationModule } from './module/notification/notification.module';
-import { CloudinaryConfig } from './config/cloudinary.config';
 import { CloudinaryModule } from './module/cloudinary/cloudinary.module';
 import { ScheduleModule } from '@nestjs/schedule';
 import { S3Module } from './module/s3/s3.module';
+import { JwtModule } from '@nestjs/jwt';
 
 @Module({
-  imports: [ MailerModule.forRootAsync({
-      imports: [ConfigModule ,ScheduleModule.forRoot(),],
+  imports: [
+    ConfigModule.forRoot({
+      isGlobal: true,
+    }),
+
+    JwtModule.registerAsync({
+      imports: [ConfigModule],
+      inject: [ConfigService],
+      useFactory: async (configService: ConfigService) => ({
+        secret: await configService.getOrThrow('ACCESS_TOKEN_SECRET'),
+        signOptions: {
+          expiresIn: await configService.getOrThrow('ACCESS_TOKEN_EXPIREIN'),
+        },
+      }),
+    }),
+
+    MailerModule.forRootAsync({
+      imports: [ConfigModule, ScheduleModule.forRoot()],
       inject: [ConfigService],
       useFactory: (config: ConfigService) => ({
         transport: {
@@ -30,12 +46,22 @@ import { S3Module } from './module/s3/s3.module';
           },
         },
         defaults: {
-          from: config.get<string>('SMTP_FROM') || config.get<string>('SMTP_USER'),
+          from:
+            config.get<string>('SMTP_FROM') || config.get<string>('SMTP_USER'),
         },
       }),
-    }),AuthModule, PrismaModule, MailModule, EventModule, EnrollementModule, NotificationModule, CloudinaryModule, S3Module,],
-  controllers: [AppController, ],
-  providers: [AppService , SeederService ],
-  exports:[]
+    }),
+    AuthModule,
+    PrismaModule,
+    MailModule,
+    EventModule,
+    EnrollementModule,
+    NotificationModule,
+    CloudinaryModule,
+    S3Module,
+  ],
+  controllers: [AppController],
+  providers: [AppService, SeederService],
+  exports: [],
 })
 export class AppModule {}

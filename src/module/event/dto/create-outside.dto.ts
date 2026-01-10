@@ -1,6 +1,13 @@
 // dtos/create-outside-event.dto.ts
 import { ApiProperty } from '@nestjs/swagger';
-import { IsString, IsOptional, IsInt, Min, IsNotEmpty, IsDateString } from 'class-validator';
+import {
+  IsString,
+  IsOptional,
+  IsInt,
+  Min,
+  IsNotEmpty,
+  IsDateString,
+} from 'class-validator';
 
 export class CreateOutsideEventDto {
   @ApiProperty({
@@ -28,12 +35,11 @@ export class CreateOutsideEventDto {
   @Min(1)
   pointValue: number;
 
- @ApiProperty({
+  @ApiProperty({
     example: '2025-12-31',
     description: 'Event date (ISO format)',
   })
   @IsNotEmpty({ message: 'Date is required!' })
   @IsDateString({}, { message: 'Date must be in valid ISO format' })
   date: string;
-
 }

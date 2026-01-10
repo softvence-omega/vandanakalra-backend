@@ -1,4 +1,11 @@
-import { IsNotEmpty, IsInt, Min, IsArray, ArrayMinSize, IsUUID } from 'class-validator';
+import {
+  IsNotEmpty,
+  IsInt,
+  Min,
+  IsArray,
+  ArrayMinSize,
+  IsUUID,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class ClaimPointsDto {

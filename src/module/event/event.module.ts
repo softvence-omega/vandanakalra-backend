@@ -6,8 +6,8 @@ import { NotificationModule } from '../notification/notification.module';
 import { EventReminderService } from './eventReminder.service';
 
 @Module({
-  imports: [PrismaModule , NotificationModule],
+  imports: [PrismaModule, NotificationModule],
   controllers: [EventController],
-  providers: [EventService ,EventReminderService],
+  providers: [EventService, EventReminderService],
 })
 export class EventModule {}

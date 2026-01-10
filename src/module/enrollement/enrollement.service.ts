@@ -6,7 +6,7 @@ import {
   NotFoundException,
 } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
-import { Enrolled, Status, userRole } from '@prisma/client';
+import { Enrolled, Status, userRole } from '@prisma';
 import {
   ClaimPointsDto,
   CreateEnrollementDto,
@@ -23,7 +23,7 @@ export class EnrollementService {
 
   // Create enrollment (user self-enrolls)
   async createEnrollment(userId: string, eventId: string) {
-    return this.prisma.$transaction(async (tx) => {
+    return this.prisma.client.$transaction(async (tx) => {
       const event = await tx.event.findUnique({
         where: { id: eventId },
       });
@@ -72,7 +72,7 @@ export class EnrollementService {
     const { enrolledIds } = dto;
 
     // Fetch admin to check auto-approve setting
-    const admin = await this.prisma.user.findFirst({
+    const admin = await this.prisma.client.user.findFirst({
       where: { role: userRole.ADMIN },
       select: { adminAutoApprovePoint: true }, // only fetch needed field
     });
@@ -80,7 +80,7 @@ export class EnrollementService {
     const isAutoApprove = admin?.adminAutoApprovePoint === true;
 
     // 1. Fetch enrollments
-    const enrollments = await this.prisma.enrolled.findMany({
+    const enrollments = await this.prisma.client.enrolled.findMany({
       where: {
         id: { in: enrolledIds },
         userId: userId,
@@ -121,43 +121,48 @@ export class EnrollementService {
 
     // 4. Branch logic: auto-approve vs manual claim
     if (isAutoApprove) {
-      const updatedEnrollments = await this.prisma.$transaction(async (tx) => {
-        const results: Enrolled[] = [];
-        for (const e of enrollments) {
-          // Update enrollment
-          const updated = await tx.enrolled.update({
-            where: { id: e.id },
-            data: {
-              status: 'ATTENDED', // Prisma accepts string if it matches enum
-              claimPoint: true,
-            },
-          });
+      const updatedEnrollments = await this.prisma.client.$transaction(
+        async (tx) => {
+          const results: Enrolled[] = [];
+          for (const e of enrollments) {
+            // Update enrollment
+            const updated = await tx.enrolled.update({
+              where: { id: e.id },
+              data: {
+                status: 'ATTENDED', // Prisma accepts string if it matches enum
+                claimPoint: true,
+              },
+            });
 
-          // Award points
-          await tx.user.update({
-            where: { id: userId },
-            data: { point: { increment: e.event.pointValue } },
-          });
+            // Award points
+            await tx.user.update({
+              where: { id: userId },
+              data: { point: { increment: e.event.pointValue } },
+            });
 
-          // Notify
-          if (e.user.fcmToken && e.user.isEventApproveNotify) {
-            await this.notification.sendPushNotification(
-              e.user.fcmToken,
-              'Claim Approved!',
-              'Your claimed point has been approved.',
-              { status: 'approved' },
-            );
+            // Notify
+            if (e.user.fcmToken && e.user.isEventApproveNotify) {
+              await this.notification.sendPushNotification(
+                e.user.fcmToken,
+                'Claim Approved!',
+                'Your claimed point has been approved.',
+                { status: 'approved' },
+              );
+            }
+
+            results.push(updated);
           }
+          return results;
+        },
+      );
 
-          results.push(updated);
-        }
-        return results;
-      });
-
-      return {updatedEnrollments ,  message: `Points successfully claimed! You’ve earned Points`}; // matches Promise<Enrolled[]>
+      return {
+        updatedEnrollments,
+        message: `Points successfully claimed! You’ve earned Points`,
+      }; // matches Promise<Enrolled[]>
     } else {
       // 🕒 MANUAL: just flag for admin review (existing logic)
-      return await this.prisma.$transaction(async (tx) => {
+      return await this.prisma.client.$transaction(async (tx) => {
         const updatePromises = enrollments.map((e) =>
           tx.enrolled.update({
             where: { id: e.id },
@@ -169,7 +174,7 @@ export class EnrollementService {
     }
   }
   async getAllClaimedWithJoinStatus() {
-    const records = await this.prisma.enrolled.findMany({
+    const records = await this.prisma.client.enrolled.findMany({
       where: {
         claimPoint: true,
         status: 'JOIN', // as per your request
@@ -192,7 +197,7 @@ export class EnrollementService {
     status: UpdateEnrollmentStatusDto,
   ) {
     // 1. Fetch enrollment with event and user
-    const enrollment = await this.prisma.enrolled.findUnique({
+    const enrollment = await this.prisma.client.enrolled.findUnique({
       where: { id: enrollmentId },
       include: { event: true, user: true },
     });
@@ -233,7 +238,7 @@ export class EnrollementService {
     );
 
     // 4. Check if user has PRESENT attendance on event's date
-    const validAttendance = await this.prisma.attendence.findFirst({
+    const validAttendance = await this.prisma.client.attendence.findFirst({
       where: {
         userId: enrollment.userId,
         attendence: 'PRESENT', // matches AttendanceStatus.PRESENT
@@ -251,7 +256,7 @@ export class EnrollementService {
     }
 
     // 5. Proceed with transaction: update status + award points
-    const updated = await this.prisma.$transaction(async (tx) => {
+    const updated = await this.prisma.client.$transaction(async (tx) => {
       const updatedEnrollment = await tx.enrolled.update({
         where: { id: enrollmentId },
         data: { status: status.status },
@@ -280,7 +285,7 @@ export class EnrollementService {
 
   // Get all JOIN enrollments for a specific user
   async getUserEnrollmentsWithJoinStatus(userId: string) {
-    return this.prisma.enrolled.findMany({
+    return this.prisma.client.enrolled.findMany({
       where: {
         userId,
         status: Status.JOIN,

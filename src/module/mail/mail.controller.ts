@@ -1,4 +1,10 @@
-import { Controller, Post, Body, UsePipes, ValidationPipe } from '@nestjs/common';
+import {
+  Controller,
+  Post,
+  Body,
+  UsePipes,
+  ValidationPipe,
+} from '@nestjs/common';
 import { SubscribeDto } from './dto/create-mail.dto';
 import { MailService } from './mail.service';
 import { Public } from '../../common/decorators/public.decorators';

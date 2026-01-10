@@ -14,7 +14,7 @@ import { MailProcessor } from './mail.processor';
       name: 'email',
     }),
   ],
-  providers: [MailService,MailProcessor],
+  providers: [MailService, MailProcessor],
   exports: [MailService],
 })
 export class MailModule {}

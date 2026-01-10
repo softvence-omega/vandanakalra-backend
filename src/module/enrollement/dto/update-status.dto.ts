@@ -1,6 +1,6 @@
 import { IsNotEmpty, IsString, IsIn, isBoolean, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
-import { Status } from '@prisma/client';
+import { Status } from '@prisma';
 
 export class UpdateEnrollmentStatusDto {
   @ApiProperty({
@@ -9,6 +9,8 @@ export class UpdateEnrollmentStatusDto {
     enum: Status,
   })
   @IsNotEmpty({ message: 'Status is required' })
-  @IsEnum(Status, { message: 'Status must be one of: JOIN, ATTENDED, REJECTED' })
+  @IsEnum(Status, {
+    message: 'Status must be one of: JOIN, ATTENDED, REJECTED',
+  })
   status: Status;
 }

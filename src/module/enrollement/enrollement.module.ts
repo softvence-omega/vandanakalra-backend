@@ -4,8 +4,8 @@ import { EnrollementService } from './enrollement.service';
 import { NotificationModule } from '../notification/notification.module';
 
 @Module({
-  imports:[NotificationModule],
+  imports: [NotificationModule],
   controllers: [EnrollementController],
-  providers: [EnrollementService]
+  providers: [EnrollementService],
 })
 export class EnrollementModule {}

@@ -6,6 +6,7 @@ import { JwtGuard } from './common/guards/jwt.guard';
 import { RolesGuard } from './common/guards/roles.guard';
 import { setupSwagger } from './swagger/swagger.setup';
 import { ValidationPipe } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -13,8 +14,14 @@ async function bootstrap() {
     bodyParser: true,
   });
 
+  const configService = app.get(ConfigService);
+
   app.enableCors({
-    origin: ["http://localhost:5173","http://localhost:5174","https://dom-mcgeary-frontend.vercel.app"],
+    origin: [
+      'http://localhost:5173',
+      'http://localhost:5174',
+      'https://dom-mcgeary-frontend.vercel.app',
+    ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE',
     credentials: true,
   });
@@ -39,6 +46,6 @@ async function bootstrap() {
   app.useGlobalFilters(new GlobalExceptionFilter());
 
   setupSwagger(app);
-  await app.listen(process.env.PORT as string);
+  await app.listen(configService.get<string>('PORT') || 5000);
 }
 bootstrap();

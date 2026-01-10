@@ -36,7 +36,7 @@ import {
 } from './dto/update-account.dto';
 import { CreateAttendanceDto } from './dto/attendence.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
-import { userRole } from '@prisma/client';
+import { userRole } from '@prisma';
 import { NotificationService } from '../notification/notification.service';
 import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
 import multer from 'multer';

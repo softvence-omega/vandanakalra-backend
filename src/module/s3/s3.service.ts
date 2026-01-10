@@ -11,7 +11,9 @@ export class S3Service {
   constructor(private configService: ConfigService) {
     const awsRegion = this.configService.get<string>('AWS_REGION');
     const awsAccessKeyId = this.configService.get<string>('AWS_ACCESS_KEY_ID');
-    const awsSecretAccessKey = this.configService.get<string>('AWS_SECRET_ACCESS_KEY');
+    const awsSecretAccessKey = this.configService.get<string>(
+      'AWS_SECRET_ACCESS_KEY',
+    );
     const awsBucket = this.configService.get<string>('AWS_S3_BUCKET');
 
     // Validate required env vars
@@ -32,17 +34,16 @@ export class S3Service {
     this.s3Client = new S3Client(s3Config);
   }
 
-  async uploadFile(
-    file: Express.Multer.File,
-    folder: string,
-  ): Promise<string> {
+  async uploadFile(file: Express.Multer.File, folder: string): Promise<string> {
     if (!file) {
       throw new InternalServerErrorException('No file provided for upload');
     }
 
     const fileExtension = file.originalname.split('.').pop();
     if (!fileExtension) {
-      throw new InternalServerErrorException('Unable to determine file extension');
+      throw new InternalServerErrorException(
+        'Unable to determine file extension',
+      );
     }
 
     const key = `${folder}/${uuidv4()}.${fileExtension}`;

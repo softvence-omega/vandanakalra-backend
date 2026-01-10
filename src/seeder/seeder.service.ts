@@ -1,7 +1,7 @@
 import { Injectable, OnApplicationBootstrap, Logger } from '@nestjs/common';
 import { PrismaService } from 'src/module/prisma/prisma.service';
 import * as bcrypt from 'bcrypt';
-import { userRole } from '@prisma/client';
+import { userRole } from '@prisma';
 
 @Injectable()
 export class SeederService implements OnApplicationBootstrap {
@@ -20,7 +20,7 @@ export class SeederService implements OnApplicationBootstrap {
     const firstName = process.env.ADMIN_FIRST_NAME as string;
     const lastName = process.env.ADMIN_LAST_NAME as string;
 
-    const supperAdmin = await this.prisma.user.findFirst({
+    const supperAdmin = await this.prisma.client.user.findFirst({
       where: { role: userRole.ADMIN },
     });
 
@@ -31,7 +31,7 @@ export class SeederService implements OnApplicationBootstrap {
 
     const hashedPassword = await bcrypt.hash(superAdminPassword, 10);
 
-    await this.prisma.user.create({
+    await this.prisma.client.user.create({
       data: {
         username: fullName,
         firstname: firstName,

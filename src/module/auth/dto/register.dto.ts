@@ -1,5 +1,11 @@
 // register.dto.ts
-import { IsEmail, IsNotEmpty, IsString, MinLength, Matches } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsString,
+  MinLength,
+  Matches,
+} from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class RegisterDto {
@@ -21,12 +27,14 @@ export class RegisterDto {
 
   @ApiProperty({
     example: 'humayun_kabir',
-    description: 'Unique username (3-20 characters, alphanumeric and underscores)',
+    description:
+      'Unique username (3-20 characters, alphanumeric and underscores)',
   })
   @IsNotEmpty({ message: 'Username is required!' })
   @IsString({ message: 'Username must be a string' })
   @Matches(/^[a-zA-Z0-9_]{3,20}$/, {
-    message: 'Username must be 3-20 characters long and contain only letters, numbers, or underscores',
+    message:
+      'Username must be 3-20 characters long and contain only letters, numbers, or underscores',
   })
   username: string;
 
@@ -36,7 +44,7 @@ export class RegisterDto {
   })
   @IsNotEmpty({ message: 'fcm token  is required!' })
   fcmToken: string;
-  
+
   @ApiProperty({
     example: '1234',
     description: 'User password (min 6 characters)',
