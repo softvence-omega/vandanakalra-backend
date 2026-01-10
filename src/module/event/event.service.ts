@@ -176,31 +176,6 @@ export class EventService {
     const { fcmToken, firstname, lastname, isEventApproveNotify } = event.user;
 
     if (isActiveOrReject === 'APPROVE') {
-      // Check attendance only for approval
-      const eventDate = event.date as Date;
-      const startOfDay = new Date(eventDate);
-      startOfDay.setUTCHours(0, 0, 0, 0);
-
-      const endOfDay = new Date(eventDate);
-      endOfDay.setUTCHours(23, 59, 59, 999);
-
-      const attendance = await this.prisma.client.attendence.findFirst({
-        where: {
-          userId: event.userId,
-          attendence: 'PRESENT',
-          createdAt: {
-            gte: startOfDay,
-            lte: endOfDay,
-          },
-        },
-      });
-
-      if (!attendance) {
-        throw new BadRequestException(
-          'User was not marked as PRESENT on the event date. Cannot approve.',
-        );
-      }
-
       // Perform approval: update event + add points
       const updatedEvent = await this.prisma.client.$transaction(async (tx) => {
         const updated = await tx.outsideEvent.update({

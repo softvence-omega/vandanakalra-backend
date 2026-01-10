@@ -206,83 +206,98 @@ export class EnrollementService {
       throw new BadRequestException('Enrollment not found');
     }
 
-    // 2. If already ATTENDED, skip or return early
-    if (enrollment.status === 'ATTENDED') {
+    // 2. Prevent redundant ATTENDED update
+    if (enrollment.status === 'ATTENDED' && status.status === 'ATTENDED') {
       throw new BadRequestException('User is already marked as ATTENDED');
     }
 
-    const eventDate = enrollment.event.date; // DateTime
+    // 3. Only check attendance if setting to ATTENDED
+    if (status.status === 'ATTENDED') {
+      const eventDate = enrollment.event.date;
 
-    // 3. Normalize event date to UTC start/end of day
-    const eventDayStart = new Date(
-      Date.UTC(
-        eventDate.getUTCFullYear(),
-        eventDate.getUTCMonth(),
-        eventDate.getUTCDate(),
-        0,
-        0,
-        0,
-        0,
-      ),
-    );
-    const eventDayEnd = new Date(
-      Date.UTC(
-        eventDate.getUTCFullYear(),
-        eventDate.getUTCMonth(),
-        eventDate.getUTCDate(),
-        23,
-        59,
-        59,
-        999,
-      ),
-    );
-
-    // 4. Check if user has PRESENT attendance on event's date
-    const validAttendance = await this.prisma.client.attendence.findFirst({
-      where: {
-        userId: enrollment.userId,
-        attendence: 'PRESENT', // matches AttendanceStatus.PRESENT
-        createdAt: {
-          gte: eventDayStart,
-          lte: eventDayEnd,
-        },
-      },
-    });
-
-    if (!validAttendance) {
-      throw new BadRequestException(
-        'User was not marked PRESENT on the event date. Cannot mark as ATTENDED.',
+      const eventDayStart = new Date(
+        Date.UTC(
+          eventDate.getUTCFullYear(),
+          eventDate.getUTCMonth(),
+          eventDate.getUTCDate(),
+          0,
+          0,
+          0,
+          0,
+        ),
       );
+      const eventDayEnd = new Date(
+        Date.UTC(
+          eventDate.getUTCFullYear(),
+          eventDate.getUTCMonth(),
+          eventDate.getUTCDate(),
+          23,
+          59,
+          59,
+          999,
+        ),
+      );
+
+      const validAttendance = await this.prisma.client.attendence.findFirst({
+        where: {
+          userId: enrollment.userId,
+          attendence: 'PRESENT',
+          createdAt: {
+            gte: eventDayStart,
+            lte: eventDayEnd,
+          },
+        },
+      });
+
+      if (!validAttendance) {
+        throw new BadRequestException(
+          'User was not marked PRESENT on the event date. Cannot mark as ATTENDED.',
+        );
+      }
     }
 
-    // 5. Proceed with transaction: update status + award points
+    // 4. Transaction: update enrollment + award points (only if ATTENDED)
     const updated = await this.prisma.client.$transaction(async (tx) => {
       const updatedEnrollment = await tx.enrolled.update({
         where: { id: enrollmentId },
         data: { status: status.status },
       });
 
-      await tx.user.update({
-        where: { id: enrollment.userId },
-        data: { point: { increment: enrollment.event.pointValue } },
-      });
+      if (status.status === 'ATTENDED') {
+        await tx.user.update({
+          where: { id: enrollment.userId },
+          data: { point: { increment: enrollment.event.pointValue } },
+        });
+      }
 
       return updatedEnrollment;
     });
 
-    if (enrollment.user.fcmToken && enrollment.user.isEventApproveNotify) {
-      //Send notification
-      await this.notification.sendPushNotification(
-        enrollment.user.fcmToken || '', // assuming you store FCM token in User
-        'Claim Approved!',
-        'Your claimed point has been approved.',
-        { status: 'approved' },
-      );
+    // 5. Send push notification based on status
+    const fcmToken = enrollment.user.fcmToken;
+    const shouldNotify = enrollment.user.isEventApproveNotify; // Reusing this flag for both approve/reject
+
+    if (fcmToken && shouldNotify) {
+      if (status.status === 'ATTENDED') {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Claim Approved!',
+          'Your claimed point has been approved.',
+          { status: 'approved' },
+        );
+      } else if (status.status === 'REJECTED') {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Claim Rejected',
+          'Your claimed point has been rejected.',
+          { status: 'rejected' },
+        );
+      }
+      // Note: 'JOIN' typically doesn't need a notification — adjust if needed
     }
 
     return updated;
   }
-
   // Get all JOIN enrollments for a specific user
   async getUserEnrollmentsWithJoinStatus(userId: string) {
     return this.prisma.client.enrolled.findMany({

@@ -27,21 +27,16 @@ export class ResetPasswordDto {
   @ApiProperty({
     description: 'FCM tokent sent via FCM notification',
     example: '1234',
-    minLength: 4,
-    maxLength: 4,
   })
   @IsNotEmpty()
   @IsString()
   token: string;
 
   @ApiProperty({
-    description: 'New password — must be exactly 4 characters long',
-    example: '9876', // or 'aB3!', if non-numeric allowed
-    minLength: 4,
-    maxLength: 4,
+    description: 'New password — must be exactly 6 characters long',
+    example: '987678', // or 'aB3!', if non-numeric allowed
   })
   @IsNotEmpty()
   @IsString()
-  @Length(4, 4, { message: 'Password must be exactly 4 characters long' })
   newPassword: string;
 }
