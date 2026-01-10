@@ -311,7 +311,7 @@ export class AuthService {
         now.getUTCFullYear(),
         now.getUTCMonth(),
         now.getUTCDate(),
-        7, // 12:00 PM UTC
+        1, // 12:00 PM UTC
         0,
         0,
         0,
