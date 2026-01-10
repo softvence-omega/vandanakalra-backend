@@ -212,7 +212,7 @@ export class AuthController {
       try {
         imageUrl = await this.s3Service.uploadFile(file, 'profile-images');
       } catch (error) {
-        console.error(error, "File Uplaod Error")
+        console.error(error, 'File Uplaod Error');
         // S3Service already wraps errors, but you can log or customize here
         return sendResponse(res, {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
