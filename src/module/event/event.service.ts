@@ -470,10 +470,10 @@ export class EventService {
     // Fetch attended enrollments with event data
     const joinEnrollments = await this.prisma.client.enrolled.findMany({
       where: {
-        userId,
-        status: {
-          in: ['JOIN', 'SCANNED'],
-        },
+        userId
+        // status: {
+        //   in: ['JOIN', 'SCANNED', 'REJECTED' , 'ATTENDED'],
+        // },
       },
       include: {
         event: true,
