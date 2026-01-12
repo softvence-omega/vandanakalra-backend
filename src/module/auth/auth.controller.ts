@@ -11,7 +11,6 @@ import {
   Req,
   Res,
   UploadedFile,
-  UseFilters,
   UseInterceptors,
 } from '@nestjs/common';
 import { AuthService } from './auth.service';
@@ -23,7 +22,6 @@ import {
   ApiBody,
   ApiConsumes,
   ApiOperation,
-  ApiParam,
   ApiQuery,
   ApiResponse,
 } from '@nestjs/swagger';
@@ -37,14 +35,10 @@ import {
 import { CreateAttendanceDto } from './dto/attendence.dto';
 import { Roles } from 'src/common/decorators/roles.decorator';
 import { userRole } from '@prisma';
-import { NotificationService } from '../notification/notification.service';
-import { FileInterceptor, FilesInterceptor } from '@nestjs/platform-express';
-import multer from 'multer';
+import { FileInterceptor } from '@nestjs/platform-express';
 import { CloudinaryService } from 'src/common/services/cloudinary.service';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgetPasswordDto';
 import { S3Service } from '../s3/s3.service';
-import { imageFileFilter } from 'src/common/utils/multer.options';
-import { MulterExceptionFilter } from 'src/common/utils/multer-exception.filter';
 
 @Controller('auth')
 export class AuthController {
@@ -180,14 +174,7 @@ export class AuthController {
     });
   }
 
-  @UseInterceptors(
-    FileInterceptor('image', {
-      storage: multer.memoryStorage(),
-      fileFilter: imageFileFilter,
-      limits: { fileSize: 5 * 1024 * 1024 }, // 5MB
-    }),
-  )
-  @UseFilters(MulterExceptionFilter)
+  @UseInterceptors(FileInterceptor('image'))
   @Patch('update-profile')
   @ApiConsumes('multipart/form-data')
   @ApiBody({
@@ -212,7 +199,7 @@ export class AuthController {
       try {
         imageUrl = await this.s3Service.uploadFile(file, 'profile-images');
       } catch (error) {
-        console.error(error, "File Uplaod Error")
+        console.error(error, 'File Upload Error');
         // S3Service already wraps errors, but you can log or customize here
         return sendResponse(res, {
           statusCode: HttpStatus.INTERNAL_SERVER_ERROR,
