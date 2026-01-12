@@ -114,7 +114,7 @@ export class EnrollementService {
       }
       if (e.claimPoint) {
         throw new BadRequestException(
-          `Points already claimed for enrollment ${e.id}`,
+          `Points already claimed  for enrollment ${e.id}`,
         );
       }
     }
