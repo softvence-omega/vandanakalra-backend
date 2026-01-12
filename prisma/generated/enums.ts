@@ -19,6 +19,7 @@ export type userRole = (typeof userRole)[keyof typeof userRole]
 
 export const Status = {
   JOIN: 'JOIN',
+  SCANNED: 'SCANNED',
   ATTENDED: 'ATTENDED',
   REJECTED: 'REJECTED'
 } as const

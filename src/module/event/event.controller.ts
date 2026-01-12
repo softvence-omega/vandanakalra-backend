@@ -292,6 +292,25 @@ export class EventController {
     });
   }
 
+
+  @Get('scannedEventByUser')
+  @Roles(userRole.ADMIN, userRole.USER)
+  @ApiResponse({
+    status: 200,
+    description: 'Scanned events and stats retrieved successfully',
+  })
+  async getScannedEventByUser(@Res() res: Response, @Req() req: Request) {
+    const userId = (req as any).user?.id;
+    const result = await this.eventService.getScannedEventByUser(userId);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Scanned events retrieved successfully',
+      data: result,
+    });
+  }
+
   @Get('upcoming')
   async getUpcomingEvents(@Req() req: Request, @Res() res: Response) {
     const userId = req.user!.id;

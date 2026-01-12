@@ -109,6 +109,25 @@ export class EnrollementController {
     });
   }
 
+  @Patch('enventScann/:enrollmentId')
+  async updateEnrollmentStatusToScanned(
+    @Req() req: Request,
+    @Res() res: Response,
+    @Body() body: UpdateEnrollmentStatusDto,
+    @Param('enrollmentId') enrollmentId: string,
+  ) {
+    const result = await this.enrollmentService.updateEnrollmentStatusToScanned(
+      enrollmentId,
+      body,
+    );
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Enrollment status updated To scanned',
+      data: result,
+    });
+  }
+
   // @Public()
   // @Get('me/join')
   // async getUserJoinEnrollments(@Req() req: Request, @Res() res: Response) {

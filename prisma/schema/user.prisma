@@ -5,6 +5,7 @@ enum userRole {
 
 enum Status {
     JOIN
+    SCANNED
     ATTENDED
     REJECTED
 }
