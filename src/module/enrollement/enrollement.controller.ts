@@ -109,6 +109,7 @@ export class EnrollementController {
     });
   }
 
+  @Public()
   @Patch('enventScann/:enrollmentId')
   async updateEnrollmentStatusToScanned(
     @Req() req: Request,
