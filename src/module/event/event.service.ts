@@ -471,7 +471,9 @@ export class EventService {
     const joinEnrollments = await this.prisma.client.enrolled.findMany({
       where: {
         userId,
-        status: 'JOIN',
+        status: {
+          in: ['JOIN', 'SCANNED'],
+        },
       },
       include: {
         event: true,
@@ -485,7 +487,7 @@ export class EventService {
       totalJoin,
     };
   }
-// issues
+  // issues
   async getScannedEventByUser(userId: string) {
     // Check if user exists
     const user = await this.prisma.client.user.findUnique({
