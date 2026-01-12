@@ -107,9 +107,9 @@ export class EnrollementService {
 
     // 3. Validate enrollment state
     for (const e of enrollments) {
-      if (e.status !== 'JOIN') {
+      if (e.status !== 'SCANNED') {
         throw new BadRequestException(
-          `Enrollment ${e.id} must have status 'JOIN' to claim points`,
+          `Enrollment ${e.id} must have status 'SCANNED' to claim points`,
         );
       }
       if (e.claimPoint) {
