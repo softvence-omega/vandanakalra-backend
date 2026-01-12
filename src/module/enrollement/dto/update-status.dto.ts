@@ -4,7 +4,7 @@ import { Status } from '@prisma';
 
 export class UpdateEnrollmentStatusDto {
   @ApiProperty({
-    example: 'ATTENDED',
+    example: 'SCANNED',
     description: 'Status to set (JOIN | ATTENDED | REJECTED)',
     enum: Status,
   })

@@ -177,7 +177,7 @@ export class EnrollementService {
     const records = await this.prisma.client.enrolled.findMany({
       where: {
         claimPoint: true,
-        status: 'JOIN', // as per your request
+        status:'SCANNED'
       },
       include: {
         event: true,
@@ -211,51 +211,7 @@ export class EnrollementService {
       throw new BadRequestException('User is already marked as ATTENDED');
     }
 
-    // 3. Only check attendance if setting to ATTENDED
-    if (status.status === 'ATTENDED') {
-      const eventDate = enrollment.event.date;
-
-      const eventDayStart = new Date(
-        Date.UTC(
-          eventDate.getUTCFullYear(),
-          eventDate.getUTCMonth(),
-          eventDate.getUTCDate(),
-          0,
-          0,
-          0,
-          0,
-        ),
-      );
-      const eventDayEnd = new Date(
-        Date.UTC(
-          eventDate.getUTCFullYear(),
-          eventDate.getUTCMonth(),
-          eventDate.getUTCDate(),
-          23,
-          59,
-          59,
-          999,
-        ),
-      );
-
-      const validAttendance = await this.prisma.client.attendence.findFirst({
-        where: {
-          userId: enrollment.userId,
-          attendence: 'PRESENT',
-          createdAt: {
-            gte: eventDayStart,
-            lte: eventDayEnd,
-          },
-        },
-      });
-
-      if (!validAttendance) {
-        throw new BadRequestException(
-          'User was not marked PRESENT on the event date. Cannot mark as ATTENDED.',
-        );
-      }
-    }
-
+    
     // 4. Transaction: update enrollment + award points (only if ATTENDED)
     const updated = await this.prisma.client.$transaction(async (tx) => {
       const updatedEnrollment = await tx.enrolled.update({
@@ -298,6 +254,64 @@ export class EnrollementService {
 
     return updated;
   }
+
+  async updateEnrollmentStatusToScanned(
+    enrollmentId: string,
+    status: UpdateEnrollmentStatusDto,
+  ) {
+    // 1. Fetch enrollment with event and user
+    const enrollment = await this.prisma.client.enrolled.findUnique({
+      where: { id: enrollmentId },
+      include: { event: true, user: true },
+    });
+
+    if (!enrollment) {
+      throw new BadRequestException('Enrollment not found');
+    }
+
+    // 2. Prevent redundant ATTENDED update
+    if (enrollment.status === 'SCANNED' && status.status === 'SCANNED') {
+      throw new BadRequestException('User is already marked as SCANNED');
+    }
+
+    
+    // 4. Transaction: update enrollment + award points (only if ATTENDED)
+    const updated = await this.prisma.client.$transaction(async (tx) => {
+      const updatedEnrollment = await tx.enrolled.update({
+        where: { id: enrollmentId },
+        data: { status: status.status },
+      });
+
+
+      return updatedEnrollment;
+    });
+
+    // 5. Send push notification based on status
+    const fcmToken = enrollment.user.fcmToken;
+    const shouldNotify = enrollment.user.isEventApproveNotify; // Reusing this flag for both approve/reject
+
+    if (fcmToken && shouldNotify) {
+      if (status.status === 'ATTENDED') {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Claim Approved!',
+          'Your claimed point has been approved.',
+          { status: 'approved' },
+        );
+      } else if (status.status === 'REJECTED') {
+        await this.notification.sendPushNotification(
+          fcmToken,
+          'Claim Rejected',
+          'Your claimed point has been rejected.',
+          { status: 'rejected' },
+        );
+      }
+      // Note: 'JOIN' typically doesn't need a notification — adjust if needed
+    }
+
+    return updated;
+  }
+  
   // Get all JOIN enrollments for a specific user
   async getUserEnrollmentsWithJoinStatus(userId: string) {
     return this.prisma.client.enrolled.findMany({

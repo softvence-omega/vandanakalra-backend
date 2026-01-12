@@ -485,6 +485,34 @@ export class EventService {
       totalJoin,
     };
   }
+// issues
+  async getScannedEventByUser(userId: string) {
+    // Check if user exists
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+    });
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // Fetch attended enrollments with event data
+    const scanedEnrollments = await this.prisma.client.enrolled.findMany({
+      where: {
+        userId,
+        status: 'SCANNED',
+      },
+      include: {
+        event: true,
+      },
+    });
+
+    const totalScanned = scanedEnrollments.length;
+
+    return {
+      scanedEvents: scanedEnrollments,
+      totalScanned,
+    };
+  }
   async deleteEvent(eventId: string, userId?: string) {
     const event = await this.prisma.client.event.findUnique({
       where: { id: eventId },
