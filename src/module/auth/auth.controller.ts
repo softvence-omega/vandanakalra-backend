@@ -1,6 +1,7 @@
 import {
   Body,
   Controller,
+  Delete,
   Get,
   HttpStatus,
   Param,
@@ -24,6 +25,9 @@ import {
   ApiOperation,
   ApiQuery,
   ApiResponse,
+  ApiTags,
+  ApiBearerAuth,
+  ApiParam,
 } from '@nestjs/swagger';
 import { RegisterDto } from './dto/register.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
@@ -40,13 +44,14 @@ import { CloudinaryService } from 'src/common/services/cloudinary.service';
 import { ForgotPasswordDto, ResetPasswordDto } from './dto/forgetPasswordDto';
 import { S3Service } from '../s3/s3.service';
 
+@ApiTags('Auth')
 @Controller('auth')
 export class AuthController {
   constructor(
     private authService: AuthService,
     private readonly cloudinaryService: CloudinaryService,
     private s3Service: S3Service, // ✅ Inject S3
-  ) {}
+  ) { }
 
   // refresh token
   @Post('refresh-token')
@@ -355,6 +360,25 @@ export class AuthController {
       statusCode: HttpStatus.OK,
       success: true,
       message: 'User retrieved succefully',
+      data: result,
+    });
+  }
+
+  @Delete('delete-account/:userId')
+  @Roles(userRole.ADMIN)
+  @ApiOperation({ summary: 'Permanently delete user account' })
+  @ApiParam({ name: 'userId', description: 'The ID of the user to delete' })
+  @ApiResponse({ status: 200, description: 'Account deleted successfully' })
+  async deleteAccount(
+    @Param('userId') userId: string,
+    @Req() req: Request,
+    @Res() res: Response,
+  ) {
+    const result = await this.authService.deleteAccount(userId);
+    return sendResponse(res, {
+      statusCode: HttpStatus.OK,
+      success: true,
+      message: 'Account deleted successfully',
       data: result,
     });
   }

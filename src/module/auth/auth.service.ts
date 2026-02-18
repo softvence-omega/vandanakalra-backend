@@ -498,4 +498,20 @@ export class AuthService {
 
     return { users };
   }
+
+  async deleteAccount(userId: string) {
+    const user = await this.prisma.client.user.findUnique({
+      where: { id: userId },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    await this.prisma.client.user.delete({
+      where: { id: userId },
+    });
+
+    return { message: 'Account deleted successfully' };
+  }
 }

@@ -2,7 +2,7 @@
 CREATE TYPE "userRole" AS ENUM ('USER', 'ADMIN');
 
 -- CreateEnum
-CREATE TYPE "Status" AS ENUM ('JOIN', 'ATTENDED');
+CREATE TYPE "Status" AS ENUM ('JOIN', 'SCANNED', 'ATTENDED', 'REJECTED');
 
 -- CreateEnum
 CREATE TYPE "AttendanceStatus" AS ENUM ('PRESENT', 'APPCENT');
@@ -25,6 +25,13 @@ CREATE TABLE "User" (
     "firstname" TEXT NOT NULL,
     "lastname" TEXT NOT NULL,
     "username" TEXT NOT NULL,
+    "fcmToken" TEXT,
+    "image" TEXT,
+    "resetPasswordToken" TEXT,
+    "resetPasswordExpires" TIMESTAMP(3),
+    "isEventApproveNotify" BOOLEAN NOT NULL DEFAULT true,
+    "isNewEventNotify" BOOLEAN NOT NULL DEFAULT true,
+    "isEventReminder" BOOLEAN NOT NULL DEFAULT true,
     "point" INTEGER NOT NULL DEFAULT 0,
     "role" "userRole" NOT NULL DEFAULT 'USER',
     "password" TEXT NOT NULL,
@@ -32,6 +39,10 @@ CREATE TABLE "User" (
     "isDeleted" BOOLEAN NOT NULL DEFAULT false,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updatedAt" TIMESTAMP(3) NOT NULL,
+    "adminAutoApprovePoint" BOOLEAN NOT NULL DEFAULT true,
+    "adminAllowCustomPoint" BOOLEAN NOT NULL DEFAULT true,
+    "adminCreateEventNotify" BOOLEAN NOT NULL DEFAULT true,
+    "adminEventReminders" BOOLEAN NOT NULL DEFAULT true,
 
     CONSTRAINT "User_pkey" PRIMARY KEY ("id")
 );
@@ -45,11 +56,26 @@ CREATE TABLE "Event" (
     "date" TIMESTAMP(3) NOT NULL,
     "time" TEXT NOT NULL,
     "maxStudent" INTEGER NOT NULL,
+    "studentEnrolled" INTEGER NOT NULL DEFAULT 0,
     "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "eventType" TEXT NOT NULL DEFAULT 'INSIDE',
     "userId" TEXT,
 
     CONSTRAINT "Event_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "OutsideEvent" (
+    "id" TEXT NOT NULL,
+    "title" TEXT NOT NULL,
+    "description" TEXT,
+    "pointValue" INTEGER NOT NULL,
+    "date" TIMESTAMP(3),
+    "createdAt" TIMESTAMP(3) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "approved" BOOLEAN NOT NULL DEFAULT false,
+    "userId" TEXT,
+
+    CONSTRAINT "OutsideEvent_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
@@ -82,6 +108,9 @@ CREATE UNIQUE INDEX "Enrolled_userId_eventId_key" ON "Enrolled"("userId", "event
 
 -- AddForeignKey
 ALTER TABLE "Event" ADD CONSTRAINT "Event_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "OutsideEvent" ADD CONSTRAINT "OutsideEvent_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "Enrolled" ADD CONSTRAINT "Enrolled_userId_fkey" FOREIGN KEY ("userId") REFERENCES "User"("id") ON DELETE CASCADE ON UPDATE CASCADE;
