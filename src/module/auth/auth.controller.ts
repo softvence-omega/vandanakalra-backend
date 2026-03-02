@@ -365,7 +365,6 @@ export class AuthController {
   }
 
   @Delete('delete-account/:userId')
-  @Roles(userRole.ADMIN)
   @ApiOperation({ summary: 'Permanently delete user account' })
   @ApiParam({ name: 'userId', description: 'The ID of the user to delete' })
   @ApiResponse({ status: 200, description: 'Account deleted successfully' })
