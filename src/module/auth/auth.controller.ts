@@ -145,6 +145,27 @@ export class AuthController {
     });
   }
 
+  @Post('create-admin')
+  @Roles(userRole.ADMIN)
+  @ApiOperation({
+    summary: 'Create admin user',
+    description: 'Allows an admin to create another admin user',
+  })
+  @ApiResponse({
+    status: HttpStatus.CREATED,
+    description: 'Admin user created successfully',
+  })
+  async createAdmin(@Body() dto: RegisterDto, @Res() res: Response) {
+    const result = await this.authService.createAdmin(dto);
+
+    return sendResponse(res, {
+      statusCode: HttpStatus.CREATED,
+      success: true,
+      message: 'Admin user created successfully',
+      data: result,
+    });
+  }
+
   // change password
   @Patch('change-password')
   @Roles(userRole.ADMIN, userRole.USER)
