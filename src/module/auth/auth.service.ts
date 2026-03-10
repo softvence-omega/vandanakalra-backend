@@ -30,7 +30,7 @@ export class AuthService {
     private jwtService: JwtService,
     private mailerService: MailerService,
     private notification: NotificationService,
-  ) {}
+  ) { }
 
   async register(dto: RegisterDto) {
     const existingUser = await this.prisma.client.user.findUnique({
@@ -90,6 +90,35 @@ export class AuthService {
     );
 
     return { user: newUser, ...tokens };
+  }
+
+  async createAdmin(dto: RegisterDto) {
+    const existingUser = await this.prisma.client.user.findUnique({
+      where: { username: dto.username },
+    });
+
+    if (existingUser) {
+      throw new BadRequestException('Username is already registered!');
+    }
+
+    const hashedPassword = await bcrypt.hash(
+      dto.password,
+      parseInt(process.env.SALT_ROUND!, 10),
+    );
+
+    const newUser = await this.prisma.client.user.create({
+      data: {
+        firstname: dto.firstName,
+        lastname: dto.lastName,
+        username: dto.username,
+        password: hashedPassword,
+        fcmToken: dto.fcmToken,
+        role: 'ADMIN',
+        isActive: true,
+      },
+    });
+
+    return { user: newUser };
   }
 
   // login
